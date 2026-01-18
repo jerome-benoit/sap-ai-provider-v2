@@ -129,7 +129,7 @@ describe("convertToSAPMessages", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
-      content: "<reasoning>Hidden chain of thought</reasoning>Final answer",
+      content: "<think>Hidden chain of thought</think>Final answer",
       role: "assistant",
       tool_calls: undefined,
     });
@@ -592,7 +592,7 @@ describe("convertToSAPMessages", () => {
     const result = convertToSAPMessages(prompt, { includeReasoning: true });
 
     expect(result).toHaveLength(1);
-    // Empty reasoning should not produce <reasoning></reasoning> tags
+    // Empty reasoning should not produce <think></think> tags
     expect(result[0]).toEqual({
       content: "Final",
       role: "assistant",

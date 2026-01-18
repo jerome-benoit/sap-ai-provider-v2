@@ -32,7 +32,7 @@ import { Buffer } from "node:buffer";
  * - File attachments (non-image) are not supported
  *
  * **Behavior:**
- * - Reasoning parts are dropped by default; when enabled via `includeReasoning`, they are preserved inline as `<reasoning>...</reasoning>` markers
+ * - Reasoning parts are dropped by default; when enabled via `includeReasoning`, they are preserved inline as `<think>...</think>` markers
  * @see {@link https://sdk.vercel.ai/docs/ai-sdk-core/prompt-engineering Vercel AI SDK Prompt Engineering}
  * @see {@link https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/orchestration SAP AI Core Orchestration}
  * @param prompt - The AI SDK prompt to convert
@@ -76,7 +76,7 @@ export interface ConvertToSAPMessagesOptions {
    * Include assistant reasoning parts in the converted messages.
    *
    * When false (default), reasoning content is dropped
-   * When true, reasoning is preserved as `<reasoning>...</reasoning>` markers
+   * When true, reasoning is preserved as `<think>...</think>` markers
    */
   includeReasoning?: boolean;
 }
@@ -123,7 +123,7 @@ export function convertToSAPMessages(
               // Reasoning parts are converted to XML markers for preservation
               // When disabled (default), reasoning content is omitted from the prompt
               if (includeReasoning && part.text) {
-                text += `<reasoning>${part.text}</reasoning>`;
+                text += `<think>${part.text}</think>`;
               }
               break;
             }

@@ -34,9 +34,9 @@
  * const result = await generateText({
  *   model: provider('gpt-4o'),
  *   prompt: 'Hello',
- *   // AI SDK params - validated with warnings only
+ *   // AI SDK params - warning-only validation
  *   temperature: 0.8,
- *   // Provider options - strictly validated (throws on error)
+ *   // Provider options - strict validation
  *   providerOptions: {
  *     'sap-ai': {
  *       includeReasoning: true,
