@@ -3,8 +3,10 @@
 [![npm](https://img.shields.io/npm/v/@jerome-benoit/sap-ai-provider/latest?label=npm&color=blue)](https://www.npmjs.com/package/@jerome-benoit/sap-ai-provider)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Vercel AI SDK](https://img.shields.io/badge/Vercel%20AI%20SDK-5.0+-black.svg)](https://sdk.vercel.ai/docs)
-[![Language Model](https://img.shields.io/badge/Language%20Model-V3-green.svg)](https://sdk.vercel.ai/docs/ai-sdk-core/provider-management)
+[![Language Model](https://img.shields.io/badge/Language%20Model-V2-orange.svg)](https://sdk.vercel.ai/docs/ai-sdk-core/provider-management)
 [![Embedding Model](https://img.shields.io/badge/Embedding%20Model-V3-green.svg)](https://sdk.vercel.ai/docs/ai-sdk-core/embeddings)
+
+> **Note:** This is a **V2-compatible fork** for use with **AI SDK 5.x**.
 
 A community provider for SAP AI Core that integrates seamlessly with the Vercel
 AI SDK. Built on top of the official **@sap-ai-sdk/orchestration** and
@@ -68,8 +70,7 @@ SAP's enterprise-grade AI models through the familiar Vercel AI SDK interface.
 - 🛡️ **Content Filtering** - Azure Content Safety and Llama Guard support
 - 🔧 **TypeScript Support** - Full type safety and IntelliSense
 - 🎨 **Multiple Models** - Support for GPT-4, Claude, Gemini, Nova, and more
-- ⚡ **Language Model V3** - Latest Vercel AI SDK specification with enhanced
-  streaming
+- ⚡ **Language Model V2** - Compatible with Vercel AI SDK 5.x
 - 📊 **Text Embeddings** - Generate vector embeddings for RAG and semantic
   search
 - 🔀 **Dual API Support** - Choose between Orchestration or Foundation Models
@@ -129,7 +130,7 @@ try {
 
 ## Installation
 
-**Requirements:** Node.js 18+ and Vercel AI SDK 5.0+ or 6.0+
+(??)**Requirements:** Node.js 18+ and Vercel AI SDK 6.0+
 
 ```bash
 npm install @jerome-benoit/sap-ai-provider ai
