@@ -5,6 +5,7 @@
  * language and embedding models with proper configuration handling.
  */
 
+import { NoSuchModelError } from "@ai-sdk/provider";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createSAPAIProvider, sapai } from "./sap-ai-provider-v2";
@@ -356,6 +357,56 @@ describe("createSAPAIProvider", () => {
       expect(sapai.embedding).toBeDefined();
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(sapai.textEmbeddingModel).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(sapai.imageModel).toBeDefined();
+    });
+  });
+
+  describe("Image Model (Not Supported)", () => {
+    it("should have imageModel method on provider", () => {
+      const provider = createSAPAIProvider();
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(provider.imageModel).toBeDefined();
+      expect(typeof provider.imageModel).toBe("function");
+    });
+
+    it("should throw NoSuchModelError when calling imageModel", () => {
+      const provider = createSAPAIProvider();
+
+      expect(() => provider.imageModel("dall-e-3")).toThrow(NoSuchModelError);
+    });
+
+    it("should include modelId and modelType in NoSuchModelError", () => {
+      const provider = createSAPAIProvider();
+
+      try {
+        provider.imageModel("dall-e-3");
+        expect.fail("Should have thrown NoSuchModelError");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NoSuchModelError);
+        const noSuchModelError = error as NoSuchModelError;
+        expect(noSuchModelError.modelId).toBe("dall-e-3");
+        expect(noSuchModelError.modelType).toBe("imageModel");
+      }
+    });
+
+    it("should include descriptive message in NoSuchModelError", () => {
+      const provider = createSAPAIProvider();
+
+      expect(() => provider.imageModel("stable-diffusion")).toThrow(
+        "SAP AI Core Orchestration Service does not support image generation",
+      );
+    });
+
+    it("should throw for any model ID", () => {
+      const provider = createSAPAIProvider();
+
+      const modelIds = ["dall-e-3", "stable-diffusion", "midjourney", "any-model"];
+
+      for (const modelId of modelIds) {
+        expect(() => provider.imageModel(modelId)).toThrow(NoSuchModelError);
+      }
     });
   });
 });

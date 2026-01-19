@@ -6,8 +6,11 @@
  * @module sap-ai-provider-v2
  */
 
+import type { ImageModelV2, ProviderV2 } from "@ai-sdk/provider";
 import type { DeploymentIdConfig, ResourceGroupConfig } from "@sap-ai-sdk/ai-api/internal.js";
 import type { HttpDestinationOrFetchOptions } from "@sap-cloud-sdk/connectivity";
+
+import { NoSuchModelError } from "@ai-sdk/provider";
 
 import type { SAPAIEmbeddingModelId, SAPAIEmbeddingSettings } from "./sap-ai-embedding-model.js";
 
@@ -130,7 +133,7 @@ export interface SAPAIProviderSettings {
  * const chatModel = provider.languageModel('gpt-4o');
  * ```
  */
-export interface SAPAIProviderV2 {
+export interface SAPAIProviderV2 extends ProviderV2 {
   /**
    * Create a language model instance (V2).
    * @param modelId - The SAP AI Core model identifier (e.g., 'gpt-4o', 'anthropic--claude-3.5-sonnet')
@@ -162,6 +165,22 @@ export interface SAPAIProviderV2 {
     modelId: SAPAIEmbeddingModelId,
     settings?: SAPAIEmbeddingSettings,
   ): SAPAIEmbeddingModelV2;
+
+  /**
+   * Image model stub for ProviderV2 interface compliance.
+   *
+   * SAP AI Core Orchestration Service does not currently support image generation.
+   * This method always throws a `NoSuchModelError` to indicate that image generation
+   * is not available through this provider.
+   * @param modelId - The image model identifier (not used)
+   * @throws {NoSuchModelError} Always throws - image generation is not supported
+   * @example
+   * ```typescript
+   * // This will always throw NoSuchModelError
+   * provider.imageModel('dall-e-3'); // throws NoSuchModelError
+   * ```
+   */
+  imageModel(modelId: string): ImageModelV2;
 
   /**
    * Create a language model instance (V2).
@@ -339,6 +358,19 @@ export function createSAPAIProvider(options: SAPAIProviderSettings = {}): SAPAIP
   provider.chat = createModel;
   provider.embedding = createEmbeddingModel;
   provider.textEmbeddingModel = createEmbeddingModel;
+
+  /**
+   * Stub for image model - SAP AI Core does not support image generation.
+   * @param modelId - The image model identifier (not used)
+   * @throws {NoSuchModelError} Always throws
+   */
+  provider.imageModel = (modelId: string): ImageModelV2 => {
+    throw new NoSuchModelError({
+      message: `SAP AI Core Orchestration Service does not support image generation. Model '${modelId}' is not available.`,
+      modelId,
+      modelType: "imageModel",
+    });
+  };
 
   return provider as SAPAIProviderV2;
 }
