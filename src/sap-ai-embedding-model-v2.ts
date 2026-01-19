@@ -117,6 +117,7 @@ export class SAPAIEmbeddingModelV2 implements EmbeddingModelV2<string> {
    * @param options.providerOptions - Optional provider-specific options
    * @param options.headers - Optional HTTP headers
    * @returns Promise resolving to embeddings and metadata in V2 format
+   * @since 1.0.0
    */
   async doEmbed(options: {
     abortSignal?: AbortSignal;
