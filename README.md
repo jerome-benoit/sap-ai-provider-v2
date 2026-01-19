@@ -4,7 +4,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Vercel AI SDK](https://img.shields.io/badge/Vercel%20AI%20SDK-5.0+-black.svg)](https://sdk.vercel.ai/docs)
 [![Language Model](https://img.shields.io/badge/Language%20Model-V2-orange.svg)](https://sdk.vercel.ai/docs/ai-sdk-core/provider-management)
-[![Embedding Model](https://img.shields.io/badge/Embedding%20Model-V3-green.svg)](https://sdk.vercel.ai/docs/ai-sdk-core/embeddings)
+[![Embedding Model](https://img.shields.io/badge/Embedding%20Model-V2-orange.svg)](https://sdk.vercel.ai/docs/ai-sdk-core/embeddings)
 
 > **Note:** This is a **V2-compatible fork** for use with **AI SDK 5.x**.
 
