@@ -2,6 +2,7 @@
  * `@mymediset/sap-ai-provider`
  *
  * Vercel AI SDK v2 provider for SAP AI Core.
+ * Wraps the SAP AI SDK to provide AI SDK-compatible interfaces.
  */
 
 /**
