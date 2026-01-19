@@ -4,6 +4,22 @@ import { APICallError, LoadAPIKeyError, NoSuchModelError } from "@ai-sdk/provide
 import { isErrorWithCause } from "@sap-cloud-sdk/util";
 
 /**
+ * HTTP status code constants for standardized error handling.
+ * @internal
+ */
+const HTTP_STATUS = {
+  BAD_REQUEST: 400,
+  CONFLICT: 409,
+  FORBIDDEN: 403,
+  INTERNAL_ERROR: 500,
+  NOT_FOUND: 404,
+  RATE_LIMIT: 429,
+  REQUEST_TIMEOUT: 408,
+  SERVICE_UNAVAILABLE: 503,
+  UNAUTHORIZED: 401,
+} as const;
+
+/**
  * Converts SAP AI SDK OrchestrationErrorResponse to AI SDK APICallError.
  *
  * This ensures standardized error handling compatible with the AI SDK
@@ -40,7 +56,6 @@ export function convertSAPErrorToAPICallError(
   let requestId: string | undefined;
 
   if (Array.isArray(error)) {
-    // Prefer the first entry when an error list is returned
     const firstError = error[0];
     message = firstError.message;
     code = firstError.code;
@@ -66,8 +81,7 @@ export function convertSAPErrorToAPICallError(
 
   let enhancedMessage = message;
 
-  // Handle authentication errors (401/403) with LoadAPIKeyError
-  if (statusCode === 401 || statusCode === 403) {
+  if (statusCode === HTTP_STATUS.UNAUTHORIZED || statusCode === HTTP_STATUS.FORBIDDEN) {
     enhancedMessage +=
       "\n\nAuthentication failed. Verify your AICORE_SERVICE_KEY environment variable is set correctly." +
       "\nSee: https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/create-service-key";
@@ -79,15 +93,13 @@ export function convertSAPErrorToAPICallError(
     });
   }
 
-  // Handle model/deployment not found (404) with NoSuchModelError
-  if (statusCode === 404) {
+  if (statusCode === HTTP_STATUS.NOT_FOUND) {
     enhancedMessage +=
       "\n\nResource not found. The model or deployment may not exist in your SAP AI Core instance." +
       "\nSee: https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/create-deployment-for-orchestration";
     if (requestId) {
       enhancedMessage += `\nRequest ID: ${requestId}`;
     }
-    // Try to extract model/deployment identifier from message or location
     const modelId = extractModelIdentifier(message, location);
     return new NoSuchModelError({
       message: enhancedMessage,
@@ -96,11 +108,11 @@ export function convertSAPErrorToAPICallError(
     });
   }
 
-  if (statusCode === 429) {
+  if (statusCode === HTTP_STATUS.RATE_LIMIT) {
     enhancedMessage +=
       "\n\nRate limit exceeded. Please try again later or contact your SAP administrator." +
       "\nSee: https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/rate-limits";
-  } else if (statusCode >= 500) {
+  } else if (statusCode >= HTTP_STATUS.INTERNAL_ERROR) {
     enhancedMessage +=
       "\n\nSAP AI Core service error. This is typically a temporary issue. The request will be retried automatically." +
       "\nSee: https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/troubleshooting";
@@ -157,11 +169,8 @@ export function convertToAISDKError(
     return error;
   }
 
-  // Extract the root cause if this is an ErrorWithCause from SAP SDK
-  // ErrorWithCause chains: ErrorWithCause -> ErrorWithCause -> ... -> root Error
   const rootError = error instanceof Error && isErrorWithCause(error) ? error.rootCause : error;
 
-  // First check if it's a direct OrchestrationErrorResponse
   if (isOrchestrationErrorResponse(rootError)) {
     return convertSAPErrorToAPICallError(rootError, {
       ...context,
@@ -169,7 +178,6 @@ export function convertToAISDKError(
     });
   }
 
-  // Extract SAP error JSON from SSE error message
   if (rootError instanceof Error) {
     const parsedError = tryExtractSAPErrorFromMessage(rootError.message);
     if (parsedError && isOrchestrationErrorResponse(parsedError)) {
@@ -186,7 +194,6 @@ export function convertToAISDKError(
     const errorMsg = rootError.message.toLowerCase();
     const originalMsg = rootError.message;
 
-    // Authentication errors -> LoadAPIKeyError
     if (
       errorMsg.includes("authentication") ||
       errorMsg.includes("unauthorized") ||
@@ -203,7 +210,6 @@ export function convertToAISDKError(
       });
     }
 
-    // Network errors
     if (
       errorMsg.includes("econnrefused") ||
       errorMsg.includes("enotfound") ||
@@ -216,12 +222,11 @@ export function convertToAISDKError(
         message: `Network error connecting to SAP AI Core: ${originalMsg}`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 503,
+        statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
         url: context?.url ?? "",
       });
     }
 
-    // Destination resolution errors
     if (errorMsg.includes("could not resolve destination")) {
       return new APICallError({
         cause: error,
@@ -231,12 +236,11 @@ export function convertToAISDKError(
           `Check your destination configuration or provide a valid destinationName.`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 400,
+        statusCode: HTTP_STATUS.BAD_REQUEST,
         url: context?.url ?? "",
       });
     }
 
-    // Deployment resolution errors -> NoSuchModelError
     if (
       errorMsg.includes("failed to resolve deployment") ||
       errorMsg.includes("no deployment matched")
@@ -252,7 +256,6 @@ export function convertToAISDKError(
       });
     }
 
-    // Content filtering errors
     if (errorMsg.includes("filtered by the output filter")) {
       return new APICallError({
         cause: error,
@@ -262,12 +265,11 @@ export function convertToAISDKError(
           `The model's response was blocked by content safety filters. Try a different prompt.`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 400,
+        statusCode: HTTP_STATUS.BAD_REQUEST,
         url: context?.url ?? "",
       });
     }
 
-    // Extract HTTP status code from error message
     const statusMatch = /status code (\d+)/i.exec(originalMsg);
     if (statusMatch) {
       const extractedStatus = parseInt(statusMatch[1], 10);
@@ -282,7 +284,6 @@ export function convertToAISDKError(
       });
     }
 
-    // Consumed stream is a programming error
     if (errorMsg.includes("consumed stream")) {
       return new APICallError({
         cause: error,
@@ -290,12 +291,11 @@ export function convertToAISDKError(
         message: `SAP AI Core stream consumption error: ${originalMsg}`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 500,
+        statusCode: HTTP_STATUS.INTERNAL_ERROR,
         url: context?.url ?? "",
       });
     }
 
-    // SSE stream errors
     if (
       errorMsg.includes("iterating over") ||
       errorMsg.includes("parse message into json") ||
@@ -309,12 +309,11 @@ export function convertToAISDKError(
         message: `SAP AI Core streaming error: ${originalMsg}`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 500,
+        statusCode: HTTP_STATUS.INTERNAL_ERROR,
         url: context?.url ?? "",
       });
     }
 
-    // Configuration and validation errors
     if (
       errorMsg.includes("prompt template or messages must be defined") ||
       errorMsg.includes("filtering parameters cannot be empty") ||
@@ -331,12 +330,11 @@ export function convertToAISDKError(
         message: `SAP AI Core configuration error: ${originalMsg}`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 400,
+        statusCode: HTTP_STATUS.BAD_REQUEST,
         url: context?.url ?? "",
       });
     }
 
-    // Buffer not available is an environment error
     if (errorMsg.includes("buffer is not available as globals")) {
       return new APICallError({
         cause: error,
@@ -344,12 +342,11 @@ export function convertToAISDKError(
         message: `SAP AI Core environment error: ${originalMsg}`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 500,
+        statusCode: HTTP_STATUS.INTERNAL_ERROR,
         url: context?.url ?? "",
       });
     }
 
-    // Response stream undefined is a programming error
     if (errorMsg.includes("response stream is undefined")) {
       return new APICallError({
         cause: error,
@@ -357,12 +354,11 @@ export function convertToAISDKError(
         message: `SAP AI Core response stream error: ${originalMsg}`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 500,
+        statusCode: HTTP_STATUS.INTERNAL_ERROR,
         url: context?.url ?? "",
       });
     }
 
-    // Response timing issues
     if (
       errorMsg.includes("response is required to process") ||
       errorMsg.includes("stream is still open") ||
@@ -374,12 +370,11 @@ export function convertToAISDKError(
         message: `SAP AI Core response processing error: ${originalMsg}`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 500,
+        statusCode: HTTP_STATUS.INTERNAL_ERROR,
         url: context?.url ?? "",
       });
     }
 
-    // Deployment retrieval errors
     if (errorMsg.includes("failed to fetch the list of deployments")) {
       return new APICallError({
         cause: error,
@@ -387,12 +382,11 @@ export function convertToAISDKError(
         message: `SAP AI Core deployment retrieval error: ${originalMsg}`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 503,
+        statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
         url: context?.url ?? "",
       });
     }
 
-    // Stream buffer type errors
     if (errorMsg.includes("received non-uint8array")) {
       return new APICallError({
         cause: error,
@@ -400,7 +394,7 @@ export function convertToAISDKError(
         message: `SAP AI Core stream buffer error: ${originalMsg}`,
         requestBodyValues: context?.requestBody,
         responseHeaders,
-        statusCode: 500,
+        statusCode: HTTP_STATUS.INTERNAL_ERROR,
         url: context?.url ?? "",
       });
     }
@@ -423,7 +417,7 @@ export function convertToAISDKError(
     message: fullMessage,
     requestBodyValues: context?.requestBody,
     responseHeaders,
-    statusCode: 500,
+    statusCode: HTTP_STATUS.INTERNAL_ERROR,
     url: context?.url ?? "",
   });
 }
@@ -436,7 +430,6 @@ export function convertToAISDKError(
  * @internal
  */
 function extractModelIdentifier(message: string, location?: string): string | undefined {
-  // Try to extract from message: "deployment: xyz", "deployment xyz", "model: xyz", etc.
   const patterns = [
     /deployment[:\s]+([a-zA-Z0-9_-]+)/i,
     /model[:\s]+([a-zA-Z0-9_-]+)/i,
@@ -450,7 +443,6 @@ function extractModelIdentifier(message: string, location?: string): string | un
     }
   }
 
-  // Try location as fallback
   if (location) {
     const locationMatch = /([a-zA-Z0-9_-]+)/.exec(location);
     if (locationMatch?.[1]) {
@@ -499,15 +491,13 @@ function getAxiosResponseHeaders(error: unknown): Record<string, string> | undef
  * @internal
  */
 function getStatusCodeFromSAPError(code?: number): number {
-  if (!code) return 500;
+  if (!code) return HTTP_STATUS.INTERNAL_ERROR;
 
-  // Validate the code is a standard HTTP status code (100-599)
   if (code >= 100 && code < 600) {
     return code;
   }
 
-  // If code is outside HTTP range (custom SAP codes), map to generic server error
-  return 500;
+  return HTTP_STATUS.INTERNAL_ERROR;
 }
 
 /**
@@ -517,6 +507,7 @@ function getStatusCodeFromSAPError(code?: number): number {
  * 1. Checks for object with 'error' property
  * 2. Validates error is object or array
  * 3. Checks for required 'message' property (string type)
+ * 4. Optionally validates 'code' property (number type if present)
  * @param error - Error to check
  * @returns True if error is OrchestrationErrorResponse
  * @internal
@@ -532,21 +523,34 @@ function isOrchestrationErrorResponse(error: unknown): error is OrchestrationErr
   if (innerError === undefined) return false;
 
   if (Array.isArray(innerError)) {
-    return innerError.every(
-      (entry) =>
-        entry !== null &&
-        typeof entry === "object" &&
-        "message" in entry &&
-        typeof (entry as { message?: unknown }).message === "string",
-    );
+    return innerError.every((entry) => {
+      if (entry === null || typeof entry !== "object" || !("message" in entry)) {
+        return false;
+      }
+      const errorEntry = entry as { code?: unknown; message?: unknown };
+      if (typeof errorEntry.message !== "string") {
+        return false;
+      }
+      if ("code" in entry && typeof errorEntry.code !== "number") {
+        return false;
+      }
+      return true;
+    });
   }
 
-  return (
-    typeof innerError === "object" &&
-    innerError !== null &&
-    "message" in innerError &&
-    typeof (innerError as { message?: unknown }).message === "string"
-  );
+  if (typeof innerError !== "object" || innerError === null || !("message" in innerError)) {
+    return false;
+  }
+
+  const errorObj = innerError as { code?: unknown; message?: unknown };
+  if (typeof errorObj.message !== "string") {
+    return false;
+  }
+  if ("code" in innerError && typeof errorObj.code !== "number") {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -562,10 +566,10 @@ function isOrchestrationErrorResponse(error: unknown): error is OrchestrationErr
  */
 function isRetryable(statusCode: number): boolean {
   return (
-    statusCode === 408 ||
-    statusCode === 409 ||
-    statusCode === 429 ||
-    (statusCode >= 500 && statusCode < 600)
+    statusCode === HTTP_STATUS.REQUEST_TIMEOUT ||
+    statusCode === HTTP_STATUS.CONFLICT ||
+    statusCode === HTTP_STATUS.RATE_LIMIT ||
+    (statusCode >= HTTP_STATUS.INTERNAL_ERROR && statusCode < 600)
   );
 }
 
@@ -582,8 +586,6 @@ function normalizeHeaders(headers: unknown): Record<string, string> | undefined 
   const entries = Object.entries(record).flatMap(([key, value]) => {
     if (typeof value === "string") return [[key, value]];
     if (Array.isArray(value)) {
-      // Use semicolon separator to avoid ambiguity with commas in header values
-      // Example: "Accept: text/html, application/json" contains commas
       const strings = value.filter((item): item is string => typeof item === "string").join("; ");
       return strings.length > 0 ? [[key, strings]] : [];
     }
@@ -610,12 +612,10 @@ function tryExtractSAPErrorFromMessage(message: string): unknown {
   try {
     const parsed: unknown = JSON.parse(jsonMatch[0]);
 
-    // Already in OrchestrationErrorResponse format
     if (parsed && typeof parsed === "object" && "error" in parsed) {
       return parsed;
     }
 
-    // Direct SSE format - wrap it
     if (parsed && typeof parsed === "object" && "message" in parsed) {
       return { error: parsed as Record<string, unknown> };
     }
