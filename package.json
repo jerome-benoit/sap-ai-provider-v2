@@ -58,7 +58,7 @@
     "lint:md:links": "find . -name '*.md' -not -path './node_modules/*' -exec markdown-link-check -c .markdown-link-check.json {} \\;",
     "lint:md:toc": "tsx scripts/check-toc.ts",
     "lint:md:all": "npm run lint:md && npm run lint:md:toc",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit --project tsconfig.build.json",
     "prettier-check": "prettier --check .",
     "prettier-fix": "prettier --write .",
     "test": "vitest run",
@@ -97,7 +97,7 @@
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
-    "ai": "^5.0.0 || ^6.0.0"
+    "ai": "^5.0.0"
   },
   "engines": {
     "node": ">=18"
