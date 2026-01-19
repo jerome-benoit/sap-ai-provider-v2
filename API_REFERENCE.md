@@ -857,13 +857,113 @@ const embeddingModel = provider.embedding("text-embedding-3-small", {
 
 #### `provider.textEmbeddingModel(modelId, settings?)`
 
-Alias for `embedding()` method. Use this for consistency with other AI SDK
-providers.
+> **Deprecated:** Use `provider.embeddingModel()` instead. This method is
+> provided for backward compatibility.
+
+Alias for `embeddingModel()` method.
 
 **Signature:**
 
 ```typescript
 textEmbeddingModel(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SAPAIEmbeddingModel
+```
+
+#### `provider.languageModel(modelId, settings?)`
+
+ProviderV3-compliant method for creating language model instances. This is the
+standard way to create language models in AI SDK v4+.
+
+**Signature:**
+
+```typescript
+languageModel(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModel
+```
+
+**Parameters:**
+
+- `modelId`: Model identifier (e.g., 'gpt-4o', 'anthropic--claude-3.5-sonnet')
+- `settings`: Optional model configuration
+
+**Example:**
+
+```typescript
+// Using the V3 standard method
+const model = provider.languageModel("gpt-4o", {
+  modelParams: { temperature: 0.7 },
+});
+
+// Equivalent to calling the provider directly
+const model2 = provider("gpt-4o", { modelParams: { temperature: 0.7 } });
+```
+
+#### `provider.embeddingModel(modelId, settings?)`
+
+ProviderV3-compliant method for creating embedding model instances. This is the
+standard way to create embedding models in AI SDK v4+.
+
+**Signature:**
+
+```typescript
+embeddingModel(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SAPAIEmbeddingModel
+```
+
+**Parameters:**
+
+- `modelId`: Embedding model identifier (e.g., 'text-embedding-ada-002')
+- `settings`: Optional embedding model configuration
+
+**Example:**
+
+```typescript
+// Using the V3 standard method
+const embeddingModel = provider.embeddingModel("text-embedding-3-small", {
+  maxEmbeddingsPerCall: 100,
+});
+
+// Equivalent to provider.embedding()
+const embeddingModel2 = provider.embedding("text-embedding-3-small");
+```
+
+#### `provider.imageModel(modelId)`
+
+ProviderV3-compliant method for creating image generation models.
+
+**Signature:**
+
+```typescript
+imageModel(modelId: string): never
+```
+
+**Behavior:**
+
+Always throws `NoSuchModelError` because SAP AI Core does not support image
+generation models.
+
+**Example:**
+
+```typescript
+import { NoSuchModelError } from "@ai-sdk/provider";
+
+try {
+  const imageModel = provider.imageModel("dall-e-3");
+} catch (error) {
+  if (error instanceof NoSuchModelError) {
+    console.log("Image generation not supported by SAP AI Core");
+  }
+}
+```
+
+#### `provider.specificationVersion`
+
+The ProviderV3 specification version identifier.
+
+**Type:** `'v3'`
+
+**Example:**
+
+```typescript
+const provider = createSAPAIProvider();
+console.log(provider.specificationVersion); // 'v3'
 ```
 
 ---
@@ -1256,7 +1356,7 @@ Implementation of Vercel AI SDK's `LanguageModelV3` interface.
 
 | Property                      | Type           | Description                    |
 | ----------------------------- | -------------- | ------------------------------ |
-| `specificationVersion`        | `'v2'`         | API specification version      |
+| `specificationVersion`        | `'v3'`         | API specification version      |
 | `defaultObjectGenerationMode` | `'json'`       | Default object generation mode |
 | `supportsImageUrls`           | `true`         | Image URL support flag         |
 | `supportsStructuredOutputs`   | `true`         | Structured output support      |

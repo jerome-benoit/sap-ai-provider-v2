@@ -1,7 +1,7 @@
 import type { DeploymentIdConfig, ResourceGroupConfig } from "@sap-ai-sdk/ai-api/internal.js";
 import type { HttpDestinationOrFetchOptions } from "@sap-cloud-sdk/connectivity";
 
-import { ProviderV3 } from "@ai-sdk/provider";
+import { NoSuchModelError, ProviderV3 } from "@ai-sdk/provider";
 
 import {
   SAPAIEmbeddingModel,
@@ -78,12 +78,48 @@ export interface SAPAIProvider extends ProviderV3 {
   embedding(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SAPAIEmbeddingModel;
 
   /**
+   * Create an embedding model instance.
+   *
+   * Standard ProviderV3 method for creating embedding models.
+   * Equivalent to calling `embedding()`.
+   * @param modelId - The embedding model identifier
+   * @param settings - Optional embedding model settings
+   * @returns Configured SAP AI embedding model instance
+   */
+  embeddingModel(
+    modelId: SAPAIEmbeddingModelId,
+    settings?: SAPAIEmbeddingSettings,
+  ): SAPAIEmbeddingModel;
+
+  /**
+   * Image model creation (not supported).
+   *
+   * SAP AI Core Orchestration does not support image generation models.
+   * This method always throws a NoSuchModelError.
+   * @param modelId - The model identifier
+   * @throws {NoSuchModelError} Always throws - image models are not supported
+   */
+  imageModel(modelId: string): never;
+
+  /**
+   * Create a language model instance.
+   *
+   * Standard ProviderV3 method for creating language models.
+   * Equivalent to calling the provider function directly or using `chat()`.
+   * @param modelId - The SAP AI Core model identifier
+   * @param settings - Optional model configuration settings
+   * @returns Configured SAP AI language model instance
+   */
+  languageModel(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModel;
+
+  /**
    * Create a text embedding model instance.
    *
    * Alias for `embedding()` method, provided for compatibility with AI SDK conventions.
    * @param modelId - The embedding model identifier
    * @param settings - Optional embedding model settings
    * @returns Configured SAP AI embedding model instance
+   * @deprecated Use `embeddingModel()` instead.
    */
   textEmbeddingModel(
     modelId: SAPAIEmbeddingModelId,
@@ -317,9 +353,19 @@ export function createSAPAIProvider(options: SAPAIProviderSettings = {}): SAPAIP
     return createModel(modelId, settings);
   };
 
+  provider.specificationVersion = "v3";
   provider.chat = createModel;
+  provider.languageModel = createModel;
   provider.embedding = createEmbeddingModel;
   provider.textEmbeddingModel = createEmbeddingModel;
+  provider.embeddingModel = createEmbeddingModel;
+  provider.imageModel = (modelId: string) => {
+    throw new NoSuchModelError({
+      message: "SAP AI Core Orchestration does not support image generation models.",
+      modelId,
+      modelType: "imageModel",
+    });
+  };
 
   return provider as SAPAIProvider;
 }
