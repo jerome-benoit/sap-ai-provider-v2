@@ -3,6 +3,7 @@
  *
  * Vercel AI SDK provider for SAP AI Core.
  * Wraps the SAP AI SDK to provide Vercel AI SDK-compatible interfaces.
+ * Wraps the SAP AI SDK to provide AI SDK-compatible interfaces.
  */
 
 /**
