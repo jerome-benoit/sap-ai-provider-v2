@@ -8,7 +8,7 @@
 /**
  * Embedding model class for generating vector embeddings via SAP AI Core.
  */
-export { SAPAIEmbeddingModel } from "./sap-ai-embedding-model.js";
+export { SAPAIEmbeddingModelV2 as SAPAIEmbeddingModel } from "./sap-ai-embedding-model-v2.js";
 
 export type { SAPAIEmbeddingModelId, SAPAIEmbeddingSettings } from "./sap-ai-embedding-model.js";
 
@@ -43,9 +43,13 @@ export type {
 /**
  * Provider factory function and pre-configured default instance.
  */
-export { createSAPAIProvider, sapai } from "./sap-ai-provider.js";
+export { createSAPAIProvider, sapai } from "./sap-ai-provider-v2.js";
 
-export type { DeploymentConfig, SAPAIProvider, SAPAIProviderSettings } from "./sap-ai-provider.js";
+export type {
+  DeploymentConfig,
+  SAPAIProviderV2 as SAPAIProvider,
+  SAPAIProviderSettings,
+} from "./sap-ai-provider-v2.js";
 
 /**
  * Model settings types and model identifier type definitions.
