@@ -34,7 +34,7 @@ interface SAPAIEmbeddingConfig {
  */
 export class SAPAIEmbeddingModelV2 implements EmbeddingModelV2<string> {
   /** Maximum number of embeddings per API call. */
-  readonly maxEmbeddingsPerCall: number | undefined;
+  readonly maxEmbeddingsPerCall: number;
   /** The model identifier. */
   readonly modelId: string;
   /** The provider identifier string. */
