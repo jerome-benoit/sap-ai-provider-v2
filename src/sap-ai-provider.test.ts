@@ -79,33 +79,26 @@ describe("createSAPAIProvider", () => {
     });
   });
 
-  it("should accept deploymentId configuration", () => {
-    const provider = createSAPAIProvider({
+  it("should accept deploymentId and destination configurations", () => {
+    const providerWithDeploymentId = createSAPAIProvider({
       deploymentId: "d65d81e7c077e583",
     });
+    expect(providerWithDeploymentId("gpt-4o")).toBeDefined();
 
-    expect(provider("gpt-4o")).toBeDefined();
-  });
-
-  it("should accept custom destination configuration", () => {
-    const provider = createSAPAIProvider({
+    const providerWithDestination = createSAPAIProvider({
       destination: {
         url: "https://custom-ai-core.example.com",
       },
     });
+    expect(providerWithDestination("gpt-4o")).toBeDefined();
 
-    expect(provider("gpt-4o")).toBeDefined();
-  });
-
-  it("should accept both deploymentId and destination together", () => {
-    const provider = createSAPAIProvider({
+    const providerWithBoth = createSAPAIProvider({
       deploymentId: "d65d81e7c077e583",
       destination: {
         url: "https://custom-ai-core.example.com",
       },
     });
-
-    expect(provider("gpt-4o")).toBeDefined();
+    expect(providerWithBoth("gpt-4o")).toBeDefined();
   });
 
   it("should accept both deploymentId and resourceGroup", () => {
