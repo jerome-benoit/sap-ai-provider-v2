@@ -80,6 +80,7 @@ export class SAPAILanguageModelV2 implements LanguageModelV2 {
 
   /**
    * Generates a single completion (non-streaming). Delegates to V3 and transforms result to V2 format.
+   * Note: Abort signal uses Promise.race; doesn't cancel underlying HTTP request.
    * @param options - The Vercel AI SDK generation call options.
    * @returns The generation result with content, usage, and provider metadata.
    */
