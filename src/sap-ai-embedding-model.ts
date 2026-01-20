@@ -1,5 +1,7 @@
 /**
  * SAP AI Embedding Model - Vercel AI SDK EmbeddingModelV3 implementation for SAP AI Core.
+ *
+ * This is the main implementation containing all business logic for SAP AI Core embedding generation.
  * @module sap-ai-embedding-model
  */
 
@@ -55,9 +57,10 @@ export interface SAPAIEmbeddingSettings {
 }
 
 /**
+ * Internal configuration for SAP AI Embedding Model.
  * @internal
  */
-interface SAPAIEmbeddingConfig {
+interface SAPAIEmbeddingModelConfig {
   readonly deploymentConfig: DeploymentIdConfig | ResourceGroupConfig;
   readonly destination?: HttpDestinationOrFetchOptions;
   readonly provider: string;
@@ -85,19 +88,21 @@ export class SAPAIEmbeddingModel implements EmbeddingModelV3 {
   /** Whether the model supports parallel API calls. */
   readonly supportsParallelCalls: boolean = true;
 
-  private readonly config: SAPAIEmbeddingConfig;
+  private readonly config: SAPAIEmbeddingModelConfig;
   private readonly settings: SAPAIEmbeddingSettings;
 
   /**
-   * Creates a new SAP AI Embedding Model V3 instance.
-   * @param modelId - The model identifier (e.g., 'text-embedding-ada-002').
-   * @param settings - Model configuration settings (defaults to {}).
+   * Creates a new SAP AI Embedding Model instance.
+   *
+   * This is the main implementation that handles all SAP AI Core embedding logic.
+   * @param modelId - The model identifier (e.g., 'text-embedding-ada-002', 'text-embedding-3-small').
+   * @param settings - Model configuration settings (embedding type, model parameters, etc.). Defaults to {}.
    * @param config - SAP AI Core deployment and destination configuration.
    */
   constructor(
     modelId: SAPAIEmbeddingModelId,
     settings: SAPAIEmbeddingSettings = {},
-    config: SAPAIEmbeddingConfig,
+    config: SAPAIEmbeddingModelConfig,
   ) {
     if (settings.modelParams) {
       validateEmbeddingModelParamsSettings(settings.modelParams);
@@ -111,8 +116,10 @@ export class SAPAIEmbeddingModel implements EmbeddingModelV3 {
 
   /**
    * Generates embeddings for the given input values.
-   * @param options - The Vercel AI SDK embedding call options.
-   * @returns The embedding result with vectors and usage data.
+   *
+   * Validates input count, merges settings, calls SAP AI SDK, and normalizes embeddings.
+   * @param options - The Vercel AI SDK V3 embedding call options.
+   * @returns The embedding result with vectors, usage data, and warnings.
    */
   async doEmbed(options: EmbeddingModelV3CallOptions): Promise<EmbeddingModelV3Result> {
     const { abortSignal, providerOptions, values } = options;
