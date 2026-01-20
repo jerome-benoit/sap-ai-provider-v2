@@ -975,14 +975,15 @@ Configuration options for the SAP AI Provider.
 
 **Properties:**
 
-| Property                | Type                            | Default     | Description                                                                                                                                |
-| ----------------------- | ------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `name`                  | `string`                        | `'sap-ai'`  | Provider name used as key in `providerOptions`/`providerMetadata`. Provider identifier uses `{name}.{type}` format (e.g., `"sap-ai.chat"`) |
-| `resourceGroup`         | `string`                        | `'default'` | SAP AI Core resource group                                                                                                                 |
-| `deploymentId`          | `string`                        | Auto        | SAP AI Core deployment ID                                                                                                                  |
-| `destination`           | `HttpDestinationOrFetchOptions` | -           | Custom destination configuration                                                                                                           |
-| `defaultSettings`       | `SAPAISettings`                 | -           | Default model settings applied to all models                                                                                               |
-| `warnOnAmbiguousConfig` | `boolean`                       | `true`      | Emit warnings for ambiguous configurations (e.g., when both `deploymentId` and `resourceGroup` are provided, `deploymentId` wins)          |
+| Property                | Type                                     | Default     | Description                                                                                                                                          |
+| ----------------------- | ---------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                  | `string`                                 | `'sap-ai'`  | Provider name used as key in `providerOptions`/`providerMetadata`. Provider identifier uses `{name}.{type}` format (e.g., `"sap-ai.chat"`)           |
+| `resourceGroup`         | `string`                                 | `'default'` | SAP AI Core resource group                                                                                                                           |
+| `deploymentId`          | `string`                                 | Auto        | SAP AI Core deployment ID                                                                                                                            |
+| `destination`           | `HttpDestinationOrFetchOptions`          | -           | Custom destination configuration                                                                                                                     |
+| `defaultSettings`       | `SAPAISettings`                          | -           | Default model settings applied to all models                                                                                                         |
+| `logLevel`              | `'debug' \| 'error' \| 'info' \| 'warn'` | `'warn'`    | Log level for SAP Cloud SDK internal logging (authentication, service binding). Can be overridden via `SAP_CLOUD_SDK_LOG_LEVEL` environment variable |
+| `warnOnAmbiguousConfig` | `boolean`                                | `true`      | Emit warnings for ambiguous configurations (e.g., when both `deploymentId` and `resourceGroup` are provided, `deploymentId` wins)                    |
 
 **Example:**
 
@@ -990,6 +991,7 @@ Configuration options for the SAP AI Provider.
 const settings: SAPAIProviderSettings = {
   resourceGroup: "production",
   deploymentId: "d65d81e7c077e583",
+  logLevel: "warn", // Suppress info messages (default)
   warnOnAmbiguousConfig: true, // Warn if both deploymentId and resourceGroup provided
   defaultSettings: {
     modelParams: {

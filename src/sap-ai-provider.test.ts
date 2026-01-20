@@ -1,7 +1,18 @@
 /** Unit tests for SAP AI Provider. */
 
 import { NoSuchModelError } from "@ai-sdk/provider";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock setGlobalLogLevel from @sap-cloud-sdk/util
+vi.mock("@sap-cloud-sdk/util", async () => {
+  const actual = await vi.importActual<typeof import("@sap-cloud-sdk/util")>("@sap-cloud-sdk/util");
+  return {
+    ...actual,
+    setGlobalLogLevel: vi.fn(),
+  };
+});
+
+import { setGlobalLogLevel } from "@sap-cloud-sdk/util";
 
 import { createSAPAIProvider, sapai } from "./sap-ai-provider";
 
@@ -133,6 +144,36 @@ describe("createSAPAIProvider", () => {
 
     expect(provider("gpt-4o")).toBeDefined();
     expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  describe("log level configuration", () => {
+    beforeEach(() => {
+      vi.mocked(setGlobalLogLevel).mockClear();
+    });
+
+    afterEach(() => {
+      delete process.env.SAP_CLOUD_SDK_LOG_LEVEL;
+    });
+
+    it("should set SAP Cloud SDK log level to warn by default", () => {
+      createSAPAIProvider();
+
+      expect(setGlobalLogLevel).toHaveBeenCalledWith("warn");
+    });
+
+    it("should allow custom log level configuration", () => {
+      createSAPAIProvider({ logLevel: "debug" });
+
+      expect(setGlobalLogLevel).toHaveBeenCalledWith("debug");
+    });
+
+    it("should respect SAP_CLOUD_SDK_LOG_LEVEL environment variable", () => {
+      process.env.SAP_CLOUD_SDK_LOG_LEVEL = "info";
+
+      createSAPAIProvider({ logLevel: "debug" });
+
+      expect(setGlobalLogLevel).not.toHaveBeenCalled();
+    });
   });
 
   it("should merge per-call settings with defaults", () => {

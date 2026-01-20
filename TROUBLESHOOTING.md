@@ -75,6 +75,7 @@ below.
   - [Problem: High token usage / costs](#problem-high-token-usage--costs)
 - [Debugging Tools](#debugging-tools)
   - [Enable Verbose Logging](#enable-verbose-logging)
+  - [Control SAP Cloud SDK Log Level](#control-sap-cloud-sdk-log-level)
   - [Use cURL for Direct API Testing](#use-curl-for-direct-api-testing)
   - [Check Token Validity](#check-token-validity)
   - [Test with Minimal Request](#test-with-minimal-request)
@@ -330,6 +331,38 @@ request, incompatible features
 ```bash
 export DEBUG=sap-ai-provider:*
 ```
+
+### Control SAP Cloud SDK Log Level
+
+The SAP AI SDK may emit informational messages (e.g., service key usage notices).
+You can control the verbosity:
+
+#### Option 1: Via provider configuration (recommended)
+
+```typescript
+import { createSAPAIProvider } from "@mymediset/sap-ai-provider";
+
+const provider = createSAPAIProvider({
+  logLevel: "warn", // 'error' | 'warn' | 'info' | 'debug' (default: 'warn')
+});
+```
+
+#### Option 2: Via environment variable
+
+```bash
+export SAP_CLOUD_SDK_LOG_LEVEL=error  # Suppress all but errors
+```
+
+Log levels:
+
+- `error` - Only critical errors
+- `warn` - Errors and warnings (default)
+- `info` - Include informational messages (e.g., "Using service key for local
+  testing")
+- `debug` - Verbose SDK debugging
+
+**Note:** The `SAP_CLOUD_SDK_LOG_LEVEL` environment variable takes precedence
+over the `logLevel` provider option.
 
 ### Use cURL for Direct API Testing
 

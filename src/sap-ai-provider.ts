@@ -2,6 +2,7 @@ import type { DeploymentIdConfig, ResourceGroupConfig } from "@sap-ai-sdk/ai-api
 import type { HttpDestinationOrFetchOptions } from "@sap-cloud-sdk/connectivity";
 
 import { NoSuchModelError, ProviderV3 } from "@ai-sdk/provider";
+import { setGlobalLogLevel } from "@sap-cloud-sdk/util";
 
 import { deepMerge } from "./deep-merge.js";
 import {
@@ -70,6 +71,14 @@ export interface SAPAIProviderSettings {
   readonly destination?: HttpDestinationOrFetchOptions;
 
   /**
+   * Log level for SAP Cloud SDK loggers.
+   * Controls verbosity of internal SAP SDK logging (e.g., authentication, service binding).
+   * Note: SAP_CLOUD_SDK_LOG_LEVEL environment variable takes precedence if set.
+   * @default 'warn'
+   */
+  readonly logLevel?: "debug" | "error" | "info" | "warn";
+
+  /**
    * Provider name used as key for `providerOptions` and `providerMetadata`.
    * @default 'sap-ai'
    */
@@ -109,6 +118,11 @@ export function createSAPAIProvider(options: SAPAIProviderSettings = {}): SAPAIP
     console.warn(
       "createSAPAIProvider: both 'deploymentId' and 'resourceGroup' were provided; using 'deploymentId' and ignoring 'resourceGroup'.",
     );
+  }
+
+  if (!process.env.SAP_CLOUD_SDK_LOG_LEVEL) {
+    const logLevel = options.logLevel ?? "warn";
+    setGlobalLogLevel(logLevel);
   }
 
   const deploymentConfig: DeploymentConfig = options.deploymentId
