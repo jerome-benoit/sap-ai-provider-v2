@@ -31,11 +31,6 @@ export type { OrchestrationErrorResponse } from "./sap-ai-error.js";
 export { SAPAILanguageModelV2 as SAPAILanguageModel } from "./sap-ai-language-model-v2.js";
 
 /**
- * Language model class for chat/text completions via SAP AI Core.
- */
-export { SAPAILanguageModel } from "./sap-ai-language-model.js";
-
-/**
  * Provider options for per-call configuration.
  *
  * These schemas and types enable runtime validation of provider options

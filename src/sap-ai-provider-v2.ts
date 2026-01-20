@@ -1,7 +1,3 @@
-/**
- * SAP AI Provider V2 - Vercel AI SDK ProviderV2 factory for SAP AI Core Orchestration.
- */
-
 import type { ImageModelV2, ProviderV2 } from "@ai-sdk/provider";
 import type { DeploymentIdConfig, ResourceGroupConfig } from "@sap-ai-sdk/ai-api/internal.js";
 import type { HttpDestinationOrFetchOptions } from "@sap-cloud-sdk/connectivity";
@@ -18,6 +14,33 @@ import { SAPAIModelId, SAPAISettings } from "./sap-ai-settings.js";
 
 /** Deployment configuration type used by the SAP AI SDK. */
 export type DeploymentConfig = DeploymentIdConfig | ResourceGroupConfig;
+
+/**
+ * SAP AI Provider V2 interface for creating and configuring SAP AI Core models.
+ * Extends the Vercel AI SDK ProviderV2 interface with SAP-specific functionality.
+ */
+export interface SAPAIProviderV2 extends ProviderV2 {
+  /** Creates a language model instance. */
+  (modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModelV2;
+
+  /** Creates a language model instance (custom convenience method). */
+  chat(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModelV2;
+
+  /**
+   * Image model stub - always throws NoSuchModelError.
+   * SAP AI Core Orchestration Service does not support image generation.
+   */
+  imageModel(modelId: string): ImageModelV2;
+
+  /** Creates a language model instance (Vercel AI SDK ProviderV2 standard method). */
+  languageModel(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModelV2;
+
+  /** Creates a text embedding model instance (Vercel AI SDK ProviderV2 standard method). */
+  textEmbeddingModel(
+    modelId: SAPAIEmbeddingModelId,
+    settings?: SAPAIEmbeddingSettings,
+  ): SAPAIEmbeddingModelV2;
+}
 
 /**
  * Configuration settings for the SAP AI Provider.
@@ -50,31 +73,7 @@ export interface SAPAIProviderSettings {
 }
 
 /**
- * SAP AI Provider V2 interface for creating and configuring SAP AI Core models.
- * Strictly implements the Vercel AI SDK ProviderV2 interface.
- */
-export interface SAPAIProviderV2 extends ProviderV2 {
-  /** Creates a language model instance. */
-  (modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModelV2;
-
-  /**
-   * Image model stub - always throws NoSuchModelError.
-   * SAP AI Core Orchestration Service does not support image generation.
-   */
-  imageModel(modelId: string): ImageModelV2;
-
-  /** Creates a language model instance (Vercel AI SDK ProviderV2 standard method). */
-  languageModel(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModelV2;
-
-  /** Creates a text embedding model instance (Vercel AI SDK ProviderV2 standard method). */
-  textEmbeddingModel(
-    modelId: SAPAIEmbeddingModelId,
-    settings?: SAPAIEmbeddingSettings,
-  ): SAPAIEmbeddingModelV2;
-}
-
-/**
- * Creates a SAP AI Core provider instance for use with AI SDK 5.x (LanguageModelV2).
+ * Creates a SAP AI Core provider instance for use with the Vercel AI SDK (V2 compatibility).
  *
  * Uses the official SAP AI SDK (@sap-ai-sdk/orchestration) for authentication
  * and API communication. Authentication is automatic via service binding
@@ -143,6 +142,7 @@ export function createSAPAIProvider(options: SAPAIProviderSettings = {}): SAPAIP
     return createModel(modelId, settings);
   };
 
+  provider.chat = createModel;
   provider.languageModel = createModel;
   provider.textEmbeddingModel = createEmbeddingModel;
 
