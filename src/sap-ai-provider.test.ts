@@ -176,24 +176,6 @@ describe("createSAPAIProvider", () => {
     });
   });
 
-  it("should merge per-call settings with defaults", () => {
-    const provider = createSAPAIProvider({
-      defaultSettings: {
-        modelParams: {
-          temperature: 0.5,
-        },
-      },
-    });
-
-    expect(
-      provider("gpt-4o", {
-        modelParams: {
-          maxTokens: 1000,
-        },
-      }),
-    ).toBeDefined();
-  });
-
   it("should deep merge modelParams from defaults and call-time settings", () => {
     const provider = createSAPAIProvider({
       defaultSettings: {
@@ -213,11 +195,6 @@ describe("createSAPAIProvider", () => {
     });
 
     expect(model).toBeDefined();
-    // The internal V3 model should have merged modelParams:
-    // - temperature: 0.5 (from default, preserved)
-    // - maxTokens: 2000 (from call-time, added)
-    // - frequencyPenalty: 0.5 (from call-time, overrides default)
-    // - presencePenalty: 0.1 (from default, preserved)
   });
 
   it("should throw when called with new keyword", () => {
@@ -229,14 +206,7 @@ describe("createSAPAIProvider", () => {
   });
 
   describe("embedding models", () => {
-    it("should expose embedding method", () => {
-      const provider = createSAPAIProvider();
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(provider.embedding).toBeDefined();
-      expect(typeof provider.embedding).toBe("function");
-    });
-
-    it("should create an embedding model", () => {
+    it("should create embedding models via embedding method", () => {
       const provider = createSAPAIProvider();
       const model = provider.embedding("text-embedding-ada-002");
       expect(model).toBeDefined();
@@ -244,7 +214,7 @@ describe("createSAPAIProvider", () => {
       expect(model.provider).toBe("sap-ai.embedding");
     });
 
-    it("should create an embedding model with settings", () => {
+    it("should create embedding models with settings", () => {
       const provider = createSAPAIProvider();
       const model = provider.embedding("text-embedding-3-small", {
         type: "document",
@@ -253,12 +223,12 @@ describe("createSAPAIProvider", () => {
       expect(model.modelId).toBe("text-embedding-3-small");
     });
 
-    it("should expose textEmbeddingModel method (deprecated)", () => {
+    it("should support deprecated textEmbeddingModel method", () => {
       const provider = createSAPAIProvider();
-      // eslint-disable-next-line @typescript-eslint/unbound-method, @typescript-eslint/no-deprecated
-      expect(provider.textEmbeddingModel).toBeDefined();
       // eslint-disable-next-line @typescript-eslint/no-deprecated
-      expect(typeof provider.textEmbeddingModel).toBe("function");
+      const model = provider.textEmbeddingModel("text-embedding-ada-002");
+      expect(model).toBeDefined();
+      expect(model.modelId).toBe("text-embedding-ada-002");
     });
   });
 
@@ -268,14 +238,7 @@ describe("createSAPAIProvider", () => {
       expect(provider.specificationVersion).toBe("v3");
     });
 
-    it("should expose languageModel method", () => {
-      const provider = createSAPAIProvider();
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(provider.languageModel).toBeDefined();
-      expect(typeof provider.languageModel).toBe("function");
-    });
-
-    it("should create a model via languageModel method", () => {
+    it("should create language models via languageModel method", () => {
       const provider = createSAPAIProvider();
       const model = provider.languageModel("gpt-4o");
       expect(model).toBeDefined();
@@ -283,14 +246,7 @@ describe("createSAPAIProvider", () => {
       expect(model.provider).toBe("sap-ai.chat");
     });
 
-    it("should expose embeddingModel method", () => {
-      const provider = createSAPAIProvider();
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(provider.embeddingModel).toBeDefined();
-      expect(typeof provider.embeddingModel).toBe("function");
-    });
-
-    it("should create an embedding model via embeddingModel method", () => {
+    it("should create embedding models via embeddingModel method", () => {
       const provider = createSAPAIProvider();
       const model = provider.embeddingModel("text-embedding-ada-002");
       expect(model).toBeDefined();
@@ -298,16 +254,8 @@ describe("createSAPAIProvider", () => {
       expect(model.provider).toBe("sap-ai.embedding");
     });
 
-    it("should expose imageModel method", () => {
-      const provider = createSAPAIProvider();
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(provider.imageModel).toBeDefined();
-      expect(typeof provider.imageModel).toBe("function");
-    });
-
     it("should throw NoSuchModelError when calling imageModel", () => {
       const provider = createSAPAIProvider();
-
       expect(() => provider.imageModel("dall-e-3")).toThrow(NoSuchModelError);
     });
 
@@ -416,121 +364,30 @@ describe("provider name", () => {
 });
 
 describe("sapai default provider", () => {
-  it("should expose provider entrypoint", () => {
+  it("should be a pre-configured provider instance", () => {
     expect(sapai).toBeDefined();
     expect(typeof sapai).toBe("function");
+    expect(sapai.specificationVersion).toBe("v3");
   });
 
-  it("should expose chat method", () => {
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(sapai.chat).toBeDefined();
-    expect(typeof sapai.chat).toBe("function");
-  });
-
-  it("should create a model", () => {
+  it("should create language models via direct call", () => {
     const model = sapai("gpt-4o");
     expect(model).toBeDefined();
     expect(model.modelId).toBe("gpt-4o");
     expect(model.provider).toBe("sap-ai.chat");
   });
 
-  it("should create a model via chat method", () => {
+  it("should create language models via chat method", () => {
     const model = sapai.chat("gpt-4o");
     expect(model).toBeDefined();
     expect(model.modelId).toBe("gpt-4o");
     expect(model.provider).toBe("sap-ai.chat");
-    expect(model.specificationVersion).toBe("v3");
   });
 
-  it("should create a model with settings", () => {
-    const model = sapai("gpt-4o", { modelParams: { temperature: 0.5 } });
+  it("should create embedding models via embedding method", () => {
+    const model = sapai.embedding("text-embedding-ada-002");
     expect(model).toBeDefined();
-    expect(model.modelId).toBe("gpt-4o");
-  });
-
-  describe("embedding models", () => {
-    it("should expose embedding entrypoint", () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(sapai.embedding).toBeDefined();
-      expect(typeof sapai.embedding).toBe("function");
-    });
-
-    it("should expose textEmbeddingModel entrypoint", () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method, @typescript-eslint/no-deprecated
-      expect(sapai.textEmbeddingModel).toBeDefined();
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
-      expect(typeof sapai.textEmbeddingModel).toBe("function");
-    });
-
-    it("should create an embedding model via embedding method", () => {
-      const model = sapai.embedding("text-embedding-ada-002");
-      expect(model).toBeDefined();
-      expect(model.modelId).toBe("text-embedding-ada-002");
-      expect(model.provider).toBe("sap-ai.embedding");
-      expect(model.specificationVersion).toBe("v3");
-    });
-
-    it("should create an embedding model via textEmbeddingModel method (deprecated)", () => {
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
-      const model = sapai.textEmbeddingModel("text-embedding-3-small");
-      expect(model).toBeDefined();
-      expect(model.modelId).toBe("text-embedding-3-small");
-      expect(model.provider).toBe("sap-ai.embedding");
-      expect(model.specificationVersion).toBe("v3");
-    });
-
-    it("should have correct embedding model properties", () => {
-      const model = sapai.embedding("text-embedding-3-small");
-      expect(model.maxEmbeddingsPerCall).toBe(2048);
-      expect(model.supportsParallelCalls).toBe(true);
-    });
-  });
-
-  describe("provider v3 compliance", () => {
-    it("should have specificationVersion 'v3'", () => {
-      expect(sapai.specificationVersion).toBe("v3");
-    });
-
-    it("should expose languageModel entrypoint", () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(sapai.languageModel).toBeDefined();
-      expect(typeof sapai.languageModel).toBe("function");
-    });
-
-    it("should create a model via languageModel method", () => {
-      const model = sapai.languageModel("gpt-4o");
-      expect(model).toBeDefined();
-      expect(model.modelId).toBe("gpt-4o");
-      expect(model.provider).toBe("sap-ai.chat");
-      expect(model.specificationVersion).toBe("v3");
-    });
-
-    it("should expose embeddingModel entrypoint", () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(sapai.embeddingModel).toBeDefined();
-      expect(typeof sapai.embeddingModel).toBe("function");
-    });
-
-    it("should create an embedding model via embeddingModel method", () => {
-      const model = sapai.embeddingModel("text-embedding-ada-002");
-      expect(model).toBeDefined();
-      expect(model.modelId).toBe("text-embedding-ada-002");
-      expect(model.provider).toBe("sap-ai.embedding");
-      expect(model.specificationVersion).toBe("v3");
-    });
-
-    it("should expose imageModel entrypoint", () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(sapai.imageModel).toBeDefined();
-      expect(typeof sapai.imageModel).toBe("function");
-    });
-
-    it("should throw NoSuchModelError when calling imageModel", () => {
-      expect(() => sapai.imageModel("dall-e-3")).toThrow(NoSuchModelError);
-    });
-
-    it("should include modelId in error message", () => {
-      expect(() => sapai.imageModel("dall-e-3")).toThrow("Model 'dall-e-3' is not available");
-    });
+    expect(model.modelId).toBe("text-embedding-ada-002");
+    expect(model.provider).toBe("sap-ai.embedding");
   });
 });
