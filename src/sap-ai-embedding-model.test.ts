@@ -1,9 +1,7 @@
 /**
- * Unit tests for SAP AI Embedding Model
- *
- * Tests embedding model creation, configuration, and doEmbed behavior.
+ * Tests SAP AI Embedding Model - creation, configuration, and doEmbed behavior.
+ * @see SAPAIEmbeddingModel
  */
-
 import type { EmbeddingModelV3CallOptions } from "@ai-sdk/provider";
 
 import { TooManyEmbeddingValuesForCallError } from "@ai-sdk/provider";
@@ -11,52 +9,43 @@ import { describe, expect, it, vi } from "vitest";
 
 import { SAPAIEmbeddingModel } from "./sap-ai-embedding-model.js";
 
-// Mock the SAP AI SDK OrchestrationEmbeddingClient
+// Mock types
+interface ConstructorCall {
+  config: { embeddings: { model: { name: string; params?: Record<string, unknown> } } };
+  deploymentConfig: unknown;
+  destination: unknown;
+}
+interface EmbedCall {
+  request: { input: string[]; type?: string };
+  requestConfig?: { signal?: AbortSignal };
+}
+interface EmbeddingResponse {
+  getEmbeddings: () => { embedding: number[] | string; index: number; object: string }[];
+  getTokenUsage: () => { prompt_tokens: number; total_tokens: number };
+}
+
 vi.mock("@sap-ai-sdk/orchestration", () => {
   class MockOrchestrationEmbeddingClient {
     static embedError: Error | undefined;
-    static embedResponse:
-      | undefined
-      | {
-          getEmbeddings: () => { embedding: number[] | string; index: number; object: string }[];
-          getTokenUsage: () => { prompt_tokens: number; total_tokens: number };
-        };
-
-    // Track constructor arguments
-    static lastConstructorCall:
-      | undefined
-      | {
-          config: { embeddings: { model: { name: string; params?: Record<string, unknown> } } };
-          deploymentConfig: unknown;
-          destination: unknown;
-        };
-
-    // Track the last call arguments for verification
-    static lastEmbedCall:
-      | undefined
-      | {
-          request: { input: string[]; type?: string };
-          requestConfig?: { signal?: AbortSignal };
-        };
+    static embedResponse: EmbeddingResponse | undefined;
+    static lastConstructorCall: ConstructorCall | undefined;
+    static lastEmbedCall: EmbedCall | undefined;
 
     embed = vi
       .fn()
       .mockImplementation(
         (request: { input: string[]; type?: string }, requestConfig?: { signal?: AbortSignal }) => {
           MockOrchestrationEmbeddingClient.lastEmbedCall = { request, requestConfig };
-
           const errorToThrow = MockOrchestrationEmbeddingClient.embedError;
           if (errorToThrow) {
             MockOrchestrationEmbeddingClient.embedError = undefined;
             throw errorToThrow;
           }
-
           if (MockOrchestrationEmbeddingClient.embedResponse) {
             const response = MockOrchestrationEmbeddingClient.embedResponse;
             MockOrchestrationEmbeddingClient.embedResponse = undefined;
             return Promise.resolve(response);
           }
-
           return Promise.resolve({
             getEmbeddings: () => [
               { embedding: [0.1, 0.2, 0.3], index: 0, object: "embedding" },
@@ -79,92 +68,44 @@ vi.mock("@sap-ai-sdk/orchestration", () => {
       };
     }
   }
-
   return {
     MockOrchestrationEmbeddingClient,
     OrchestrationEmbeddingClient: MockOrchestrationEmbeddingClient,
   };
 });
 
-/**
- * Helper to access the mock class for test manipulation.
- * @returns The mock client with static properties for test control
- */
-async function getMockClient(): Promise<{
+interface MockClientType {
   MockOrchestrationEmbeddingClient: {
     embedError: Error | undefined;
-    embedResponse:
-      | undefined
-      | {
-          getEmbeddings: () => { embedding: number[] | string; index: number; object: string }[];
-          getTokenUsage: () => { prompt_tokens: number; total_tokens: number };
-        };
-    lastConstructorCall:
-      | undefined
-      | {
-          config: { embeddings: { model: { name: string; params?: Record<string, unknown> } } };
-          deploymentConfig: unknown;
-          destination: unknown;
-        };
-    lastEmbedCall:
-      | undefined
-      | {
-          request: { input: string[]; type?: string };
-          requestConfig?: { signal?: AbortSignal };
-        };
-  };
-}> {
-  const mod = await import("@sap-ai-sdk/orchestration");
-  return mod as unknown as {
-    MockOrchestrationEmbeddingClient: {
-      embedError: Error | undefined;
-      embedResponse:
-        | undefined
-        | {
-            getEmbeddings: () => { embedding: number[] | string; index: number; object: string }[];
-            getTokenUsage: () => { prompt_tokens: number; total_tokens: number };
-          };
-      lastConstructorCall:
-        | undefined
-        | {
-            config: { embeddings: { model: { name: string; params?: Record<string, unknown> } } };
-            deploymentConfig: unknown;
-            destination: unknown;
-          };
-      lastEmbedCall:
-        | undefined
-        | {
-            request: { input: string[]; type?: string };
-            requestConfig?: { signal?: AbortSignal };
-          };
-    };
+    embedResponse: EmbeddingResponse | undefined;
+    lastConstructorCall: ConstructorCall | undefined;
+    lastEmbedCall: EmbedCall | undefined;
   };
 }
 
+/**
+ * Helper to access the mocked SAP AI SDK OrchestrationEmbeddingClient for test manipulation.
+ * @returns The mock client instance with spied constructor and embed method.
+ */
+async function getMockClient(): Promise<MockClientType> {
+  const mod = await import("@sap-ai-sdk/orchestration");
+  return mod as unknown as MockClientType;
+}
+
 describe("SAPAIEmbeddingModel", () => {
-  const defaultConfig = {
-    deploymentConfig: { resourceGroup: "default" },
-    provider: "sap-ai",
-  };
+  const defaultConfig = { deploymentConfig: { resourceGroup: "default" }, provider: "sap-ai" };
 
-  describe("model properties", () => {
-    it("should have correct specification version", () => {
-      const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
-      expect(model.specificationVersion).toBe("v3");
-    });
-
-    it("should expose model ID and provider name", () => {
+  describe("Model properties", () => {
+    it("should expose correct interface properties", () => {
       const model = new SAPAIEmbeddingModel("text-embedding-3-small", {}, defaultConfig);
+      expect(model.specificationVersion).toBe("v3");
       expect(model.modelId).toBe("text-embedding-3-small");
       expect(model.provider).toBe("sap-ai");
-    });
-
-    it("should have default maxEmbeddingsPerCall of 2048", () => {
-      const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
       expect(model.maxEmbeddingsPerCall).toBe(2048);
+      expect(model.supportsParallelCalls).toBe(true);
     });
 
-    it("should allow custom maxEmbeddingsPerCall via settings", () => {
+    it("should allow custom maxEmbeddingsPerCall", () => {
       const model = new SAPAIEmbeddingModel(
         "text-embedding-ada-002",
         { maxEmbeddingsPerCall: 100 },
@@ -172,91 +113,18 @@ describe("SAPAIEmbeddingModel", () => {
       );
       expect(model.maxEmbeddingsPerCall).toBe(100);
     });
-
-    it("should support parallel calls", () => {
-      const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
-      expect(model.supportsParallelCalls).toBe(true);
-    });
   });
 
-  describe("constructor validation", () => {
-    it("should validate modelParams at construction time", () => {
-      expect(
-        () =>
-          new SAPAIEmbeddingModel(
-            "text-embedding-ada-002",
-            {
-              modelParams: {
-                dimensions: -1, // Invalid: must be positive
-              },
-            },
-            defaultConfig,
-          ),
-      ).toThrow();
-    });
-
+  describe("Constructor validation", () => {
     it("should accept valid modelParams", () => {
       expect(
         () =>
           new SAPAIEmbeddingModel(
             "text-embedding-3-small",
-            {
-              modelParams: {
-                dimensions: 1536,
-                encoding_format: "float",
-                normalize: true,
-              },
-            },
+            { modelParams: { dimensions: 1536, encoding_format: "float", normalize: true } },
             defaultConfig,
           ),
       ).not.toThrow();
-    });
-
-    it("should reject invalid dimensions (non-integer)", () => {
-      expect(
-        () =>
-          new SAPAIEmbeddingModel(
-            "text-embedding-ada-002",
-            {
-              modelParams: {
-                dimensions: 1.5, // Invalid: must be integer
-              },
-            },
-            defaultConfig,
-          ),
-      ).toThrow();
-    });
-
-    it("should reject invalid encoding_format", () => {
-      expect(
-        () =>
-          new SAPAIEmbeddingModel(
-            "text-embedding-ada-002",
-            {
-              modelParams: {
-                // @ts-expect-error - Testing invalid enum value
-                encoding_format: "invalid",
-              },
-            },
-            defaultConfig,
-          ),
-      ).toThrow();
-    });
-
-    it("should reject non-boolean normalize", () => {
-      expect(
-        () =>
-          new SAPAIEmbeddingModel(
-            "text-embedding-ada-002",
-            {
-              modelParams: {
-                // @ts-expect-error - Testing invalid type
-                normalize: "true",
-              },
-            },
-            defaultConfig,
-          ),
-      ).toThrow();
     });
 
     it("should not throw when modelParams is undefined", () => {
@@ -264,31 +132,37 @@ describe("SAPAIEmbeddingModel", () => {
         () => new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig),
       ).not.toThrow();
     });
+
+    it.each([
+      { description: "negative dimensions", modelParams: { dimensions: -1 } },
+      { description: "non-integer dimensions", modelParams: { dimensions: 1.5 } },
+      { description: "invalid encoding_format", modelParams: { encoding_format: "invalid" } },
+      { description: "non-boolean normalize", modelParams: { normalize: "true" } },
+    ])("should reject $description", ({ modelParams }) => {
+      expect(
+        () =>
+          new SAPAIEmbeddingModel(
+            "text-embedding-ada-002",
+            { modelParams } as never,
+            defaultConfig,
+          ),
+      ).toThrow();
+    });
   });
 
   describe("doEmbed", () => {
     it("should generate embeddings with correct result structure", async () => {
       const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
-      const options: EmbeddingModelV3CallOptions = {
+      const result = await model.doEmbed({
         values: ["Hello", "World"],
-      };
+      } as EmbeddingModelV3CallOptions);
 
-      const result = await model.doEmbed(options);
-
-      // Verify embeddings
-      expect(result.embeddings).toHaveLength(2);
-      expect(result.embeddings[0]).toEqual([0.1, 0.2, 0.3]);
-      expect(result.embeddings[1]).toEqual([0.4, 0.5, 0.6]);
-
-      // Verify usage
-      expect(result.usage).toBeDefined();
+      expect(result.embeddings).toEqual([
+        [0.1, 0.2, 0.3],
+        [0.4, 0.5, 0.6],
+      ]);
       expect(result.usage?.tokens).toBe(8);
-
-      // Verify warnings (always empty array)
       expect(result.warnings).toEqual([]);
-
-      // Verify provider metadata
-      expect(result.providerMetadata).toBeDefined();
       expect(result.providerMetadata?.["sap-ai"]).toEqual({ model: "text-embedding-ada-002" });
     });
 
@@ -302,13 +176,14 @@ describe("SAPAIEmbeddingModel", () => {
         ],
         getTokenUsage: () => ({ prompt_tokens: 12, total_tokens: 12 }),
       };
-
       const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
       const result = await model.doEmbed({ values: ["A", "B", "C"] });
 
-      expect(result.embeddings[0]).toEqual([0.1, 0.2, 0.3]);
-      expect(result.embeddings[1]).toEqual([0.4, 0.5, 0.6]);
-      expect(result.embeddings[2]).toEqual([0.7, 0.8, 0.9]);
+      expect(result.embeddings).toEqual([
+        [0.1, 0.2, 0.3],
+        [0.4, 0.5, 0.6],
+        [0.7, 0.8, 0.9],
+      ]);
     });
 
     it("should throw TooManyEmbeddingValuesForCallError when exceeding limit", async () => {
@@ -317,7 +192,6 @@ describe("SAPAIEmbeddingModel", () => {
         { maxEmbeddingsPerCall: 2 },
         defaultConfig,
       );
-
       await expect(model.doEmbed({ values: ["A", "B", "C"] })).rejects.toThrow(
         TooManyEmbeddingValuesForCallError,
       );
@@ -326,37 +200,30 @@ describe("SAPAIEmbeddingModel", () => {
     it("should pass abortSignal to SAP SDK", async () => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
       const abortController = new AbortController();
-
       const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
-      await model.doEmbed({
-        abortSignal: abortController.signal,
-        values: ["Test"],
-      });
 
-      expect(MockOrchestrationEmbeddingClient.lastEmbedCall?.requestConfig).toBeDefined();
+      await model.doEmbed({ abortSignal: abortController.signal, values: ["Test"] });
+
       expect(MockOrchestrationEmbeddingClient.lastEmbedCall?.requestConfig?.signal).toBe(
         abortController.signal,
       );
     });
 
-    it("should not pass requestConfig when no abortSignal provided", async () => {
+    it("should not pass requestConfig when no abortSignal", async () => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
-
       const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
+
       await model.doEmbed({ values: ["Test"] });
 
       expect(MockOrchestrationEmbeddingClient.lastEmbedCall?.requestConfig).toBeUndefined();
     });
   });
 
-  describe("embedding normalization", () => {
+  describe("Embedding normalization", () => {
     it("should handle base64-encoded embeddings", async () => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
-
-      // Create a base64-encoded Float32Array
       const floats = new Float32Array([1.0, 2.0, 3.0]);
       const base64 = Buffer.from(floats.buffer).toString("base64");
-
       MockOrchestrationEmbeddingClient.embedResponse = {
         getEmbeddings: () => [{ embedding: base64, index: 0, object: "embedding" }],
         getTokenUsage: () => ({ prompt_tokens: 4, total_tokens: 4 }),
@@ -365,42 +232,35 @@ describe("SAPAIEmbeddingModel", () => {
       const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
       const result = await model.doEmbed({ values: ["Test"] });
 
-      expect(result.embeddings).toHaveLength(1);
-      expect(result.embeddings[0]).toEqual([1.0, 2.0, 3.0]);
+      expect(result.embeddings).toEqual([[1.0, 2.0, 3.0]]);
     });
   });
 
-  describe("settings integration", () => {
-    it("should pass embedding type to SDK", async () => {
+  describe("Settings integration", () => {
+    it.each([
+      { description: "default type 'text'", expected: "text", settings: {} },
+      {
+        description: "constructor type 'document'",
+        expected: "document",
+        settings: { type: "document" as const },
+      },
+    ])("should use $description", async ({ expected, settings }) => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
+      const model = new SAPAIEmbeddingModel("text-embedding-ada-002", settings, defaultConfig);
 
-      const model = new SAPAIEmbeddingModel(
-        "text-embedding-ada-002",
-        { type: "document" },
-        defaultConfig,
-      );
       await model.doEmbed({ values: ["Test"] });
 
-      expect(MockOrchestrationEmbeddingClient.lastEmbedCall?.request.type).toBe("document");
+      expect(MockOrchestrationEmbeddingClient.lastEmbedCall?.request.type).toBe(expected);
     });
 
-    it("should use default type 'text' when not specified", async () => {
+    it("should pass model params to SDK client", async () => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
-
-      const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
-      await model.doEmbed({ values: ["Test"] });
-
-      expect(MockOrchestrationEmbeddingClient.lastEmbedCall?.request.type).toBe("text");
-    });
-
-    it("should pass model params to SDK client constructor", async () => {
-      const { MockOrchestrationEmbeddingClient } = await getMockClient();
-
       const model = new SAPAIEmbeddingModel(
         "text-embedding-3-large",
         { modelParams: { dimensions: 256 } },
         defaultConfig,
       );
+
       await model.doEmbed({ values: ["Test"] });
 
       expect(MockOrchestrationEmbeddingClient.lastConstructorCall?.config.embeddings.model).toEqual(
@@ -413,40 +273,32 @@ describe("SAPAIEmbeddingModel", () => {
 
     it("should not include params when modelParams not specified", async () => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
-
       const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
+
       await model.doEmbed({ values: ["Test"] });
 
       expect(MockOrchestrationEmbeddingClient.lastConstructorCall?.config.embeddings.model).toEqual(
-        { name: "text-embedding-ada-002" },
+        {
+          name: "text-embedding-ada-002",
+        },
       );
     });
 
-    it("should apply providerOptions.sap-ai type override", async () => {
+    it("should apply providerOptions type override", async () => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
-
       const model = new SAPAIEmbeddingModel(
         "text-embedding-ada-002",
         { type: "text" },
         defaultConfig,
       );
 
-      await model.doEmbed({
-        providerOptions: {
-          "sap-ai": {
-            type: "query",
-          },
-        },
-        values: ["Test"],
-      });
+      await model.doEmbed({ providerOptions: { "sap-ai": { type: "query" } }, values: ["Test"] });
 
-      // Per-call type should override constructor setting
       expect(MockOrchestrationEmbeddingClient.lastEmbedCall?.request.type).toBe("query");
     });
 
-    it("should apply providerOptions.sap-ai modelParams override", async () => {
+    it("should apply providerOptions modelParams override", async () => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
-
       const model = new SAPAIEmbeddingModel(
         "text-embedding-3-large",
         { modelParams: { dimensions: 256 } },
@@ -454,26 +306,19 @@ describe("SAPAIEmbeddingModel", () => {
       );
 
       await model.doEmbed({
-        providerOptions: {
-          "sap-ai": {
-            modelParams: { dimensions: 1024 },
-          },
-        },
+        providerOptions: { "sap-ai": { modelParams: { dimensions: 1024 } } },
         values: ["Test"],
       });
 
-      // Per-call modelParams should override constructor setting
-      expect(MockOrchestrationEmbeddingClient.lastConstructorCall?.config.embeddings.model).toEqual(
-        {
-          name: "text-embedding-3-large",
-          params: { dimensions: 1024 },
-        },
-      );
+      expect(
+        MockOrchestrationEmbeddingClient.lastConstructorCall?.config.embeddings.model.params,
+      ).toEqual({
+        dimensions: 1024,
+      });
     });
 
     it("should merge per-call modelParams with constructor modelParams", async () => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
-
       const model = new SAPAIEmbeddingModel(
         "text-embedding-3-large",
         { modelParams: { customParam: "from-constructor", dimensions: 256 } },
@@ -481,15 +326,10 @@ describe("SAPAIEmbeddingModel", () => {
       );
 
       await model.doEmbed({
-        providerOptions: {
-          "sap-ai": {
-            modelParams: { dimensions: 1024 },
-          },
-        },
+        providerOptions: { "sap-ai": { modelParams: { dimensions: 1024 } } },
         values: ["Test"],
       });
 
-      // Per-call should override dimensions, but preserve customParam from constructor
       expect(MockOrchestrationEmbeddingClient.lastConstructorCall?.config.embeddings.model).toEqual(
         {
           name: "text-embedding-3-large",
@@ -499,11 +339,10 @@ describe("SAPAIEmbeddingModel", () => {
     });
   });
 
-  describe("error handling", () => {
+  describe("Error handling", () => {
     it("should convert SAP errors to AI SDK errors", async () => {
       const { MockOrchestrationEmbeddingClient } = await getMockClient();
       MockOrchestrationEmbeddingClient.embedError = new Error("SAP API Error");
-
       const model = new SAPAIEmbeddingModel("text-embedding-ada-002", {}, defaultConfig);
 
       await expect(model.doEmbed({ values: ["Test"] })).rejects.toThrow();

@@ -2,18 +2,18 @@
  * `@mymediset/sap-ai-provider`
  *
  * Vercel AI SDK provider for SAP AI Core.
- * Wraps the SAP AI SDK to provide AI SDK-compatible interfaces.
+ * Wraps the SAP AI SDK to provide Vercel AI SDK-compatible interfaces.
  */
 
 /**
- * Embedding model.
+ * Embedding model class for generating vector embeddings via SAP AI Core.
  */
 export { SAPAIEmbeddingModel } from "./sap-ai-embedding-model.js";
 
 export type { SAPAIEmbeddingModelId, SAPAIEmbeddingSettings } from "./sap-ai-embedding-model.js";
 
 /**
- * Error handling types.
+ * Error handling types for SAP AI Core error responses.
  */
 export type { OrchestrationErrorResponse } from "./sap-ai-error.js";
 
@@ -21,7 +21,7 @@ export type { OrchestrationErrorResponse } from "./sap-ai-error.js";
  * Provider options for per-call configuration.
  *
  * These schemas and types enable runtime validation of provider options
- * passed via `providerOptions['sap-ai']` in AI SDK calls.
+ * passed via `providerOptions['sap-ai']` in Vercel AI SDK calls.
  */
 export {
   getProviderName,
@@ -36,14 +36,14 @@ export type {
 } from "./sap-ai-provider-options.js";
 
 /**
- * Provider factory and default instance.
+ * Provider factory function and pre-configured default instance.
  */
 export { createSAPAIProvider, sapai } from "./sap-ai-provider.js";
 
 export type { DeploymentConfig, SAPAIProvider, SAPAIProviderSettings } from "./sap-ai-provider.js";
 
 /**
- * Model settings and identifiers.
+ * Model settings types and model identifier type definitions.
  */
 export type { SAPAIModelId, SAPAISettings } from "./sap-ai-settings.js";
 
@@ -91,7 +91,7 @@ export {
 } from "./sap-ai-settings.js";
 
 /**
- * Response classes from SAP AI SDK.
+ * Response classes from the SAP AI SDK for orchestration results.
  */
 export {
   OrchestrationResponse,

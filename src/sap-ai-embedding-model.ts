@@ -1,9 +1,5 @@
 /**
- * SAP AI Embedding Model implementation.
- *
- * This module provides an EmbeddingModelV3 implementation that bridges
- * the Vercel AI SDK with SAP AI Core's Orchestration API for generating
- * text embeddings using the official SAP AI SDK (@sap-ai-sdk/orchestration).
+ * SAP AI Embedding Model - Vercel AI SDK EmbeddingModelV3 implementation for SAP AI Core.
  * @module sap-ai-embedding-model
  */
 
@@ -22,6 +18,7 @@ import { TooManyEmbeddingValuesForCallError } from "@ai-sdk/provider";
 import { parseProviderOptions } from "@ai-sdk/provider-utils";
 import { OrchestrationEmbeddingClient } from "@sap-ai-sdk/orchestration";
 
+import { deepMerge } from "./deep-merge.js";
 import { convertToAISDKError } from "./sap-ai-error.js";
 import {
   getProviderName,
@@ -29,20 +26,10 @@ import {
   validateEmbeddingModelParamsSettings,
 } from "./sap-ai-provider-options.js";
 
-/**
- * Default maximum number of embeddings per call.
- * OpenAI's embedding API supports up to 2048 inputs per request.
- */
+/** Default maximum embeddings per API call (OpenAI limit). */
 const DEFAULT_MAX_EMBEDDINGS_PER_CALL = 2048;
 
-/**
- * Model ID type for SAP AI embedding models.
- *
- * Common embedding models available in SAP AI Core:
- * - `text-embedding-ada-002` - OpenAI Ada v2
- * - `text-embedding-3-small` - OpenAI v3 small
- * - `text-embedding-3-large` - OpenAI v3 large
- */
+/** Model identifier for SAP AI embedding models (e.g., 'text-embedding-ada-002'). */
 export type SAPAIEmbeddingModelId = string;
 
 /**
@@ -68,7 +55,6 @@ export interface SAPAIEmbeddingSettings {
 }
 
 /**
- * Internal configuration for the SAP AI Embedding Model.
  * @internal
  */
 interface SAPAIEmbeddingConfig {
@@ -78,73 +64,35 @@ interface SAPAIEmbeddingConfig {
 }
 
 /**
- * SAP AI Core Embedding Model implementing the Vercel AI SDK EmbeddingModelV3 interface.
- *
- * This class wraps the SAP AI SDK's OrchestrationEmbeddingClient to provide
- * embedding generation capabilities compatible with the Vercel AI SDK.
+ * SAP AI Core Embedding Model implementing Vercel AI SDK EmbeddingModelV3.
  * @example
  * ```typescript
- * import { createSAPAIProvider } from '@mymediset/sap-ai-provider';
- * import { embed, embedMany } from 'ai';
- *
- * const provider = createSAPAIProvider();
- *
- * // Single embedding
  * const { embedding } = await embed({
  *   model: provider.embedding('text-embedding-ada-002'),
  *   value: 'Hello, world!'
  * });
- *
- * // Multiple embeddings
- * const { embeddings } = await embedMany({
- *   model: provider.embedding('text-embedding-3-small'),
- *   values: ['Hello', 'World', 'AI']
- * });
  * ```
  */
 export class SAPAIEmbeddingModel implements EmbeddingModelV3 {
-  /**
-   * Maximum number of embeddings that can be generated in a single API call.
-   * @default 2048
-   */
+  /** Maximum number of embeddings per API call. */
   readonly maxEmbeddingsPerCall: number;
-
-  /**
-   * The model ID.
-   */
+  /** The model identifier. */
   readonly modelId: string;
-
-  /**
-   * The provider identifier.
-   */
+  /** The provider identifier string. */
   readonly provider: string;
-
-  /**
-   * The embedding model interface version.
-   */
+  /** The Vercel AI SDK specification version. */
   readonly specificationVersion = "v3" as const;
-
-  /**
-   * Whether the model supports parallel calls.
-   * Set to true as SAP AI Core can handle concurrent requests.
-   */
+  /** Whether the model supports parallel API calls. */
   readonly supportsParallelCalls: boolean = true;
 
   private readonly config: SAPAIEmbeddingConfig;
   private readonly settings: SAPAIEmbeddingSettings;
 
-  /**
-   * Creates a new SAP AI Embedding Model instance.
-   * @param modelId - The embedding model identifier (e.g., 'text-embedding-ada-002')
-   * @param settings - Optional model settings
-   * @param config - Internal configuration from the provider
-   */
   constructor(
     modelId: SAPAIEmbeddingModelId,
     settings: SAPAIEmbeddingSettings = {},
     config: SAPAIEmbeddingConfig,
   ) {
-    // Validate modelParams at construction time
     if (settings.modelParams) {
       validateEmbeddingModelParamsSettings(settings.modelParams);
     }
@@ -157,35 +105,19 @@ export class SAPAIEmbeddingModel implements EmbeddingModelV3 {
 
   /**
    * Generates embeddings for the given input values.
-   *
-   * This method implements the EmbeddingModelV3 interface and wraps
-   * the SAP AI SDK's OrchestrationEmbeddingClient.
-   * @param options - The embedding request options
-   * @returns Promise resolving to embeddings and usage information
-   * @since 1.0.0
-   * @example
-   * ```typescript
-   * const result = await model.doEmbed({
-   *   values: ['Hello, world!', 'How are you?']
-   * });
-   *
-   * console.log(result.embeddings); // [[0.1, 0.2, ...], [0.3, 0.4, ...]]
-   * console.log(result.usage?.tokens); // 10
-   * ```
+   * @param options - The Vercel AI SDK embedding call options.
+   * @returns The embedding result with vectors and usage data.
    */
   async doEmbed(options: EmbeddingModelV3CallOptions): Promise<EmbeddingModelV3Result> {
     const { abortSignal, providerOptions, values } = options;
 
     const providerName = getProviderName(this.config.provider);
-
-    // Parse and validate provider options with Zod schema
     const sapOptions = await parseProviderOptions({
       provider: providerName,
       providerOptions,
       schema: sapAIEmbeddingProviderOptions,
     });
 
-    // Validate input count against maxEmbeddingsPerCall
     if (values.length > this.maxEmbeddingsPerCall) {
       throw new TooManyEmbeddingValuesForCallError({
         maxEmbeddingsPerCall: this.maxEmbeddingsPerCall,
@@ -195,25 +127,18 @@ export class SAPAIEmbeddingModel implements EmbeddingModelV3 {
       });
     }
 
-    // Determine embedding type: per-call option overrides constructor setting
     const embeddingType = sapOptions?.type ?? this.settings.type ?? "text";
 
     try {
       const client = this.createClient(sapOptions?.modelParams);
 
       const response = await client.embed(
-        {
-          input: values,
-          type: embeddingType,
-        },
-        // Pass abortSignal to the SAP SDK via requestConfig
+        { input: values, type: embeddingType },
         abortSignal ? { signal: abortSignal } : undefined,
       );
 
       const embeddingData = response.getEmbeddings();
       const tokenUsage = response.getTokenUsage();
-
-      // Sort embeddings by index to ensure correct order
       const sortedEmbeddings = [...embeddingData].sort((a, b) => a.index - b.index);
 
       const embeddings: EmbeddingModelV3Embedding[] = sortedEmbeddings.map((data) =>
@@ -242,16 +167,13 @@ export class SAPAIEmbeddingModel implements EmbeddingModelV3 {
   }
 
   /**
-   * Creates an OrchestrationEmbeddingClient with the current configuration.
-   * @param perCallModelParams - Optional model params from per-call provider options
-   * @returns Configured embedding client
+   * Creates an SAP AI SDK OrchestrationEmbeddingClient with merged configuration.
+   * @param perCallModelParams - Per-call model parameters to merge with instance settings.
+   * @returns A configured SAP AI SDK embedding client instance.
+   * @internal
    */
   private createClient(perCallModelParams?: Record<string, unknown>): OrchestrationEmbeddingClient {
-    // Merge constructor modelParams with per-call modelParams (per-call takes precedence)
-    const mergedParams = {
-      ...this.settings.modelParams,
-      ...perCallModelParams,
-    };
+    const mergedParams = deepMerge(this.settings.modelParams ?? {}, perCallModelParams ?? {});
     const hasParams = Object.keys(mergedParams).length > 0;
 
     const embeddingConfig: EmbeddingModelConfig = {
@@ -269,18 +191,16 @@ export class SAPAIEmbeddingModel implements EmbeddingModelV3 {
   }
 
   /**
-   * Converts SAP embedding response to AI SDK format.
-   * Handles both number array and base64-encoded string formats.
-   * @param embedding - The embedding from SAP API (number[] or base64 string)
-   * @returns Normalized embedding as number array
+   * Converts SAP AI SDK embedding (number[] or base64) to Vercel AI SDK format.
+   * @param embedding - The embedding as number array or base64 string.
+   * @returns The normalized embedding as a number array.
+   * @internal
    */
   private normalizeEmbedding(embedding: number[] | string): EmbeddingModelV3Embedding {
     if (Array.isArray(embedding)) {
       return embedding;
     }
-
-    // Handle base64-encoded embedding (less common)
-    // Base64 string represents float32 values
+    // Base64-encoded float32 values
     const buffer = Buffer.from(embedding, "base64");
     const float32Array = new Float32Array(
       buffer.buffer,

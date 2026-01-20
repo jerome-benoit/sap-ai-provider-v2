@@ -1,9 +1,4 @@
-/**
- * Unit tests for SAP AI Provider Options
- *
- * Tests Zod schema validation for provider options passed via
- * `providerOptions['sap-ai']` in AI SDK calls.
- */
+/** Unit tests for SAP AI Provider Options. */
 
 import type { SharedV3Warning } from "@ai-sdk/provider";
 
@@ -158,7 +153,6 @@ describe("sapAILanguageModelProviderOptions", () => {
 
   describe("type inference", () => {
     it("should have correct TypeScript type", () => {
-      // This is a compile-time check - if types are wrong, TypeScript will error
       const validOptions: SAPAILanguageModelProviderOptions = {
         includeReasoning: true,
         modelParams: {
@@ -253,7 +247,6 @@ describe("sapAIEmbeddingProviderOptions", () => {
 
   describe("type inference", () => {
     it("should have correct TypeScript type", () => {
-      // This is a compile-time check - if types are wrong, TypeScript will error
       const validOptions: SAPAIEmbeddingProviderOptions = {
         modelParams: { dimensions: 1536 },
         type: "query",
@@ -464,21 +457,17 @@ describe("validateModelParamsWithWarnings", () => {
       { desc: "maxTokens negative", expectWarning: true, params: { maxTokens: -1 } },
     ];
 
-    for (const { desc, expectWarning, params } of testCases) {
-      it(`validateModelParamsWithWarnings should ${expectWarning ? "warn" : "NOT warn"} for ${desc}`, () => {
-        const warnings: SharedV3Warning[] = [];
-        validateModelParamsWithWarnings(params, warnings);
+    it.each(testCases)("should $expectWarning for $desc", ({ expectWarning, params }) => {
+      const warnings: SharedV3Warning[] = [];
+      validateModelParamsWithWarnings(params, warnings);
 
-        // Verify consistency: warning result should match schema validation result
-        const schemaResult = modelParamsSchema.safeParse(params);
-        const schemaIsValid = schemaResult.success;
-        const hasWarnings = warnings.length > 0;
+      const schemaResult = modelParamsSchema.safeParse(params);
+      const schemaIsValid = schemaResult.success;
+      const hasWarnings = warnings.length > 0;
 
-        // Key invariant: if schema says invalid, we should have warnings; if valid, no warnings
-        expect(hasWarnings).toBe(!schemaIsValid);
-        expect(hasWarnings).toBe(expectWarning);
-      });
-    }
+      expect(hasWarnings).toBe(!schemaIsValid);
+      expect(hasWarnings).toBe(expectWarning);
+    });
 
     it("should produce warnings with type 'other'", () => {
       const warnings: SharedV3Warning[] = [];
@@ -493,7 +482,6 @@ describe("validateModelParamsWithWarnings", () => {
       validateModelParamsWithWarnings({ temperature: 3, topP: 2 }, warnings);
 
       expect(warnings.length).toBe(2);
-      // Find warning for each parameter
       const tempWarning = warnings.find(
         (w) => w.type === "other" && w.message.includes("temperature"),
       );

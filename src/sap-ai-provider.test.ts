@@ -1,9 +1,4 @@
-/**
- * Unit tests for SAP AI Provider
- *
- * Tests provider creation, configuration, model instantiation,
- * and settings merge behavior.
- */
+/** Unit tests for SAP AI Provider. */
 
 import { NoSuchModelError } from "@ai-sdk/provider";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -40,7 +35,6 @@ describe("createSAPAIProvider", () => {
     expect(model.modelId).toBe("gpt-4o");
     expect(model.provider).toBe("sap-ai.chat");
 
-    // Also works with settings
     const modelWithSettings = provider.chat("gpt-4o", {
       modelParams: { temperature: 0.8 },
     });

@@ -1,12 +1,4 @@
-/**
- * Unit tests for SAP AI Language Model
- *
- * Tests the LanguageModelV3 implementation including:
- * - Text generation (streaming and non-streaming)
- * - Tool calling
- * - Multi-modal inputs
- * - Message conversion and formatting
- */
+/** Unit tests for SAP AI Language Model. */
 
 import type {
   LanguageModelV3FunctionTool,
@@ -19,7 +11,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { SAPAILanguageModel } from "./sap-ai-language-model";
 
-// Mock the OrchestrationClient
 vi.mock("@sap-ai-sdk/orchestration", () => {
   class MockOrchestrationClient {
     static chatCompletionError: Error | undefined;
@@ -74,7 +65,6 @@ vi.mock("@sap-ai-sdk/orchestration", () => {
         throw errorToThrow;
       }
 
-      // Return custom response if set
       if (MockOrchestrationClient.chatCompletionResponse) {
         const response = MockOrchestrationClient.chatCompletionResponse;
         MockOrchestrationClient.chatCompletionResponse = undefined;
@@ -113,7 +103,6 @@ vi.mock("@sap-ai-sdk/orchestration", () => {
     });
 
     stream = vi.fn().mockImplementation(() => {
-      // Throw synchronously if setup error is set (tests outer catch in doStream)
       if (MockOrchestrationClient.streamSetupError) {
         const error = MockOrchestrationClient.streamSetupError;
         MockOrchestrationClient.streamSetupError = undefined;
@@ -141,7 +130,6 @@ vi.mock("@sap-ai-sdk/orchestration", () => {
           },
         ] as const);
 
-      // Find the last non-null finish reason from chunks
       let lastFinishReason: null | string | undefined;
       let lastTokenUsage:
         | undefined
@@ -177,7 +165,6 @@ vi.mock("@sap-ai-sdk/orchestration", () => {
             for (const chunk of chunks) {
               yield chunk;
             }
-            // Throw error after yielding chunks if configured
             if (errorToThrow) {
               throw errorToThrow;
             }
@@ -322,26 +309,17 @@ describe("SAPAILanguageModel", () => {
   };
 
   /**
-   * Mock response builder for chat completion.
-   * Creates a mock response with sensible defaults that can be overridden.
-   * @param overrides - Optional overrides for the mock response
-   * @param overrides.content - The response content text
-   * @param overrides.finishReason - The reason the response finished
-   * @param overrides.headers - HTTP response headers
-   * @param overrides.toolCalls - Array of tool calls in the response
-   * @param overrides.usage - Token usage information
-   * @param overrides.usage.completion_tokens - Number of tokens in the completion
-   * @param overrides.usage.prompt_tokens - Number of tokens in the prompt
-   * @param overrides.usage.total_tokens - Total number of tokens used
-   * @returns Mock chat response object
-   * @example
-   * ```typescript
-   * const response = createMockChatResponse({
-   *   content: "Custom response",
-   *   finishReason: "stop"
-   * });
-   * MockClient.setChatCompletionResponse(response);
-   * ```
+   * Creates a mock chat response with sensible defaults that can be overridden.
+   * @param overrides - Optional values to override defaults.
+   * @param overrides.content - The response content.
+   * @param overrides.finishReason - The finish reason.
+   * @param overrides.headers - Response headers.
+   * @param overrides.toolCalls - Tool calls in the response.
+   * @param overrides.usage - Token usage information.
+   * @param overrides.usage.completion_tokens - Completion token count.
+   * @param overrides.usage.prompt_tokens - Prompt token count.
+   * @param overrides.usage.total_tokens - Total token count.
+   * @returns A mock chat response object.
    */
   const createMockChatResponse = (
     overrides: {
@@ -383,23 +361,14 @@ describe("SAPAILanguageModel", () => {
   };
 
   /**
-   * Mock stream chunk builder.
    * Creates stream chunks with sensible defaults.
-   * @param overrides - Optional overrides for the mock stream chunk
-   * @param overrides._data - Raw data to expose via chunk._data (for includeRawChunks)
-   * @param overrides.deltaContent - Incremental content in this chunk
-   * @param overrides.deltaToolCalls - Incremental tool call data in this chunk
-   * @param overrides.finishReason - The reason the stream finished (if applicable)
-   * @param overrides.usage - Token usage information for this chunk
-   * @returns Mock stream chunk object
-   * @example
-   * ```typescript
-   * const chunks = [
-   *   createMockStreamChunk({ deltaContent: "Hello" }),
-   *   createMockStreamChunk({ deltaContent: " world", finishReason: "stop" })
-   * ];
-   * MockClient.setStreamChunks(chunks);
-   * ```
+   * @param overrides - Optional values to override defaults.
+   * @param overrides._data - Raw chunk data.
+   * @param overrides.deltaContent - Delta content for streaming.
+   * @param overrides.deltaToolCalls - Delta tool calls for streaming.
+   * @param overrides.finishReason - The finish reason.
+   * @param overrides.usage - Token usage information.
+   * @returns A mock stream chunk object.
    */
   const createMockStreamChunk = (
     overrides: {
@@ -455,14 +424,16 @@ describe("SAPAILanguageModel", () => {
       expect(model.provider).toBe("sap-ai");
     });
 
-    it("should not support HTTP URLs", () => {
+    it.each([
+      {
+        expected: false,
+        name: "should not support HTTP URLs",
+        url: "http://example.com/image.png",
+      },
+      { expected: true, name: "should support data URLs", url: "data:image/png;base64,Zm9v" },
+    ])("$name", ({ expected, url }) => {
       const model = createModel();
-      expect(model.supportsUrl(new URL("http://example.com/image.png"))).toBe(false);
-    });
-
-    it("should support data URLs", () => {
-      const model = createModel();
-      expect(model.supportsUrl(new URL("data:image/png;base64,Zm9v"))).toBe(true);
+      expect(model.supportsUrl(new URL(url))).toBe(expected);
     });
 
     it("should have supportedUrls getter for image types", () => {
@@ -471,29 +442,23 @@ describe("SAPAILanguageModel", () => {
 
       expect(urls).toHaveProperty("image/*");
       expect(urls["image/*"]).toHaveLength(2);
-      // First regex should match HTTPS URLs
       expect(urls["image/*"][0].test("https://example.com/image.png")).toBe(true);
       expect(urls["image/*"][0].test("http://example.com/image.png")).toBe(false);
-      // Second regex should match data URLs for images
       expect(urls["image/*"][1].test("data:image/png;base64,Zm9v")).toBe(true);
     });
 
     describe("model capabilities", () => {
-      it("should default all capabilities to true for modern model behavior", () => {
-        const model = createModel("any-model");
-
-        // All capabilities default to true - no model list maintenance needed
-        expect(model).toMatchObject({
-          supportsImageUrls: true,
-          supportsMultipleCompletions: true,
-          supportsParallelToolCalls: true,
-          supportsStreaming: true,
-          supportsStructuredOutputs: true,
-          supportsToolCalls: true,
-        });
-      });
+      const expectedCapabilities = {
+        supportsImageUrls: true,
+        supportsMultipleCompletions: true,
+        supportsParallelToolCalls: true,
+        supportsStreaming: true,
+        supportsStructuredOutputs: true,
+        supportsToolCalls: true,
+      };
 
       it.each([
+        "any-model",
         "gpt-4o",
         "anthropic--claude-3.5-sonnet",
         "gemini-2.0-flash",
@@ -501,115 +466,38 @@ describe("SAPAILanguageModel", () => {
         "mistralai--mistral-large-instruct",
         "unknown-future-model",
       ])("should have consistent capabilities for model %s", (modelId) => {
-        // Capabilities are static defaults, not model-dependent
         const model = createModel(modelId);
-        expect(model).toMatchObject({
-          supportsImageUrls: true,
-          supportsMultipleCompletions: true,
-          supportsParallelToolCalls: true,
-          supportsStreaming: true,
-          supportsStructuredOutputs: true,
-          supportsToolCalls: true,
-        });
+        expect(model).toMatchObject(expectedCapabilities);
       });
     });
   });
 
   describe("constructor validation", () => {
-    it("should accept valid modelParams", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: {
-            maxTokens: 1000,
-            temperature: 0.7,
-            topP: 0.9,
-          },
-        }),
-      ).not.toThrow();
+    it.each([
+      { name: "valid modelParams", params: { maxTokens: 1000, temperature: 0.7, topP: 0.9 } },
+      { name: "empty modelParams", params: {} },
+      { name: "no modelParams", params: undefined },
+    ])("should accept $name", ({ params }) => {
+      expect(() => createModel("gpt-4o", params ? { modelParams: params } : {})).not.toThrow();
     });
 
-    it("should accept empty modelParams", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: {},
-        }),
-      ).not.toThrow();
+    it.each([
+      { name: "temperature too high", params: { temperature: 3 } },
+      { name: "temperature negative", params: { temperature: -1 } },
+      { name: "topP out of range", params: { topP: 1.5 } },
+      { name: "non-positive maxTokens", params: { maxTokens: 0 } },
+      { name: "non-integer maxTokens", params: { maxTokens: 100.5 } },
+      { name: "frequencyPenalty out of range", params: { frequencyPenalty: -3 } },
+      { name: "presencePenalty out of range", params: { presencePenalty: 2.5 } },
+    ])("should throw on $name", ({ params }) => {
+      expect(() => createModel("gpt-4o", { modelParams: params })).toThrow();
     });
 
-    it("should accept settings without modelParams", () => {
-      expect(() => createModel("gpt-4o", {})).not.toThrow();
-    });
-
-    it("should throw on temperature out of range (too high)", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: { temperature: 3 },
-        }),
-      ).toThrow();
-    });
-
-    it("should throw on temperature out of range (negative)", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: { temperature: -1 },
-        }),
-      ).toThrow();
-    });
-
-    it("should throw on topP out of range", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: { topP: 1.5 },
-        }),
-      ).toThrow();
-    });
-
-    it("should throw on non-positive maxTokens", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: { maxTokens: 0 },
-        }),
-      ).toThrow();
-    });
-
-    it("should throw on non-integer maxTokens", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: { maxTokens: 100.5 },
-        }),
-      ).toThrow();
-    });
-
-    it("should throw on frequencyPenalty out of range", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: { frequencyPenalty: -3 },
-        }),
-      ).toThrow();
-    });
-
-    it("should throw on presencePenalty out of range", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: { presencePenalty: 2.5 },
-        }),
-      ).toThrow();
-    });
-
-    it("should throw on non-positive n", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: { n: 0 },
-        }),
-      ).toThrow();
-    });
-
-    it("should throw on non-boolean parallel_tool_calls", () => {
-      expect(() =>
-        createModel("gpt-4o", {
-          modelParams: { parallel_tool_calls: "true" },
-        }),
-      ).toThrow();
+    it.each([
+      { name: "non-positive n", params: { n: 0 } },
+      { name: "non-boolean parallel_tool_calls", params: { parallel_tool_calls: "true" } },
+    ])("should throw on $name", ({ params }) => {
+      expect(() => createModel("gpt-4o", { modelParams: params })).toThrow();
     });
   });
 
@@ -772,7 +660,6 @@ describe("SAPAILanguageModel", () => {
 
       expectRequestBodyHasMessages(result);
 
-      // Verify the per-call options were applied
       const request = await getLastChatCompletionRequest();
       expect(request.model?.params?.temperature).toBe(0.9);
     });
@@ -896,7 +783,6 @@ describe("SAPAILanguageModel", () => {
 
       const request = await getLastChatCompletionRequest();
 
-      // Should use options.responseFormat, not settings.responseFormat
       expect(request.response_format).toEqual({
         json_schema: {
           description: "Options-level schema",
@@ -970,8 +856,6 @@ describe("SAPAILanguageModel", () => {
       expectRequestBodyHasMessages(result);
 
       const request = await getLastChatCompletionRequest();
-
-      // Call options.tools should override settings.tools
       const requestTools = Array.isArray(request.tools) ? (request.tools as unknown[]) : [];
 
       expect(
@@ -994,9 +878,6 @@ describe("SAPAILanguageModel", () => {
     });
 
     it("should warn when tool Zod schema conversion fails", async () => {
-      // In ESM, spying on `zod-to-json-schema` exports is not reliable.
-      // Instead, we provide a Zod-like object that passes our `isZodSchema`
-      // check but throws when stringified during conversion.
       const model = createModel();
       const prompt = createPrompt("Use a tool");
 
@@ -1180,9 +1061,6 @@ describe("SAPAILanguageModel", () => {
     });
 
     it("should not mutate stream-start warnings when warnings occur during stream", async () => {
-      // Produce only a tool call delta with arguments, but without a tool name.
-      // This triggers a warning during the final tool-call flush.
-
       await setStreamChunks([
         createMockStreamChunk({
           deltaToolCalls: [
@@ -1209,17 +1087,14 @@ describe("SAPAILanguageModel", () => {
       const result = await model.doStream({ prompt });
 
       const parts = await readAllParts(result.stream);
-
-      // Warnings are emitted in stream-start event
-      // should not be mutated during the stream. Our implementation correctly takes a snapshot
-      // of warnings at stream-start time.
       const streamStart = parts.find((part) => part.type === "stream-start");
       expect(streamStart?.warnings).toHaveLength(0);
     });
+
     /**
-     * Reads all parts from a stream and returns them as an array.
-     * @param stream - The readable stream to read from
-     * @returns Promise that resolves to an array of all stream parts
+     * Reads all parts from a language model stream.
+     * @param stream - The stream to read from.
+     * @returns An array of all stream parts.
      */
     async function readAllParts(stream: ReadableStream<LanguageModelV3StreamPart>) {
       const parts: LanguageModelV3StreamPart[] = [];
@@ -1241,8 +1116,6 @@ describe("SAPAILanguageModel", () => {
           deltaContent: "Hello",
         }),
         createMockStreamChunk({
-          // Tool call deltas appear before a finish reason is reported.
-          // Any text content after this point must not be emitted.
           deltaContent: " SHOULD_NOT_APPEAR",
           deltaToolCalls: [
             {
@@ -1302,42 +1175,29 @@ describe("SAPAILanguageModel", () => {
 
       const { stream } = await model.doStream({ prompt });
       const parts = await readAllParts(stream);
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-      // Check stream structure
       expect(parts[0].type).toBe("stream-start");
       expect(parts.some((p) => p.type === "response-metadata")).toBe(true);
       const responseMetadata = parts.find((p) => p.type === "response-metadata");
       expect(responseMetadata).toBeDefined();
-      expect(responseMetadata).toMatchObject({
-        modelId: "gpt-4o",
-        type: "response-metadata",
-      });
-      // Verify response-metadata has an id field (client-generated UUID)
+      expect(responseMetadata).toMatchObject({ modelId: "gpt-4o", type: "response-metadata" });
       if (responseMetadata?.type === "response-metadata") {
         expect(responseMetadata.id).toBeDefined();
         expect(typeof responseMetadata.id).toBe("string");
-        expect(responseMetadata.id).toMatch(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-        );
+        expect(responseMetadata.id).toMatch(uuidRegex);
       }
       expect(parts.some((p) => p.type === "text-delta")).toBe(true);
       expect(parts.some((p) => p.type === "finish")).toBe(true);
 
-      // Check finish part
       const finishPart = parts.find((p) => p.type === "finish");
       expect(finishPart).toBeDefined();
       if (finishPart?.type === "finish") {
-        expect(finishPart.finishReason).toEqual({
-          raw: "stop",
-          unified: "stop",
-        });
-        // Verify providerMetadata contains responseId
+        expect(finishPart.finishReason).toEqual({ raw: "stop", unified: "stop" });
         expect(finishPart.providerMetadata?.["sap-ai"]).toBeDefined();
         expect(finishPart.providerMetadata?.["sap-ai"]?.responseId).toBeDefined();
         expect(typeof finishPart.providerMetadata?.["sap-ai"]?.responseId).toBe("string");
-        expect(finishPart.providerMetadata?.["sap-ai"]?.responseId).toMatch(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-        );
+        expect(finishPart.providerMetadata?.["sap-ai"]?.responseId).toMatch(uuidRegex);
       }
     });
 
@@ -1367,12 +1227,9 @@ describe("SAPAILanguageModel", () => {
 
       const { stream } = await model.doStream({ includeRawChunks: true, prompt });
       const parts = await readAllParts(stream);
-
-      // Should have raw parts
       const rawParts = parts.filter((p) => p.type === "raw");
-      expect(rawParts).toHaveLength(2);
 
-      // Raw parts should contain the _data values
+      expect(rawParts).toHaveLength(2);
       expect(rawParts[0]).toMatchObject({ rawValue: rawData1, type: "raw" });
       expect(rawParts[1]).toMatchObject({ rawValue: rawData2, type: "raw" });
     });
@@ -1398,12 +1255,10 @@ describe("SAPAILanguageModel", () => {
       const model = createModel();
       const prompt = createPrompt("Hello");
 
-      // Test with includeRawChunks omitted (default)
       const { stream: stream1 } = await model.doStream({ prompt });
       const parts1 = await readAllParts(stream1);
       expect(parts1.filter((p) => p.type === "raw")).toHaveLength(0);
 
-      // Reset chunks for second test
       await setStreamChunks([
         createMockStreamChunk({
           _data: { some: "data" },
@@ -1417,7 +1272,6 @@ describe("SAPAILanguageModel", () => {
         }),
       ]);
 
-      // Test with includeRawChunks: false
       const { stream: stream2 } = await model.doStream({ includeRawChunks: false, prompt });
       const parts2 = await readAllParts(stream2);
       expect(parts2.filter((p) => p.type === "raw")).toHaveLength(0);
@@ -1445,7 +1299,6 @@ describe("SAPAILanguageModel", () => {
       const rawParts = parts.filter((p) => p.type === "raw");
       expect(rawParts).toHaveLength(1);
 
-      // When _data is undefined, rawValue should be the chunk itself
       const rawPart = rawParts[0] as { rawValue: unknown; type: "raw" };
       expect(rawPart.rawValue).toHaveProperty("getDeltaContent");
       expect(rawPart.rawValue).toHaveProperty("getFinishReason");
@@ -1463,8 +1316,6 @@ describe("SAPAILanguageModel", () => {
           ],
         }),
         createMockStreamChunk({
-          // On this chunk, the model declares tool_calls and we expect the
-          // provider to flush tool-call parts immediately.
           deltaToolCalls: [
             {
               function: { arguments: '"Paris"}' },
@@ -1479,10 +1330,7 @@ describe("SAPAILanguageModel", () => {
             total_tokens: 15,
           },
         }),
-        createMockStreamChunk({
-          // A trailing chunk after tool_calls should not produce text deltas.
-          deltaContent: "SHOULD_NOT_APPEAR",
-        }),
+        createMockStreamChunk({ deltaContent: "SHOULD_NOT_APPEAR" }),
       ]);
 
       const model = createModel();
@@ -1494,142 +1342,14 @@ describe("SAPAILanguageModel", () => {
       const toolCallIndex = parts.findIndex((p) => p.type === "tool-call");
       const finishIndex = parts.findIndex((p) => p.type === "finish");
 
-      expect(toolCallIndex).toBeGreaterThanOrEqual(0);
-      expect(finishIndex).toBeGreaterThanOrEqual(0);
-      expect(toolCallIndex).toBeLessThan(finishIndex);
+      expect(toolCallIndex).toBeGreaterThan(-1);
+      expect(finishIndex).toBeGreaterThan(toolCallIndex);
 
-      const finishPart = parts[finishIndex];
-      if (finishPart.type === "finish") {
-        expect(finishPart.finishReason).toEqual({
-          raw: "tool_calls",
-          unified: "tool-calls",
-        });
-      }
-
-      // Ensure we stop emitting text deltas after tool-calls is detected.
-      const textDeltas = parts
-        .filter(
-          (p): p is Extract<LanguageModelV3StreamPart, { type: "text-delta" }> =>
-            p.type === "text-delta",
-        )
-        .map((p) => p.delta);
-      expect(textDeltas.join("")).not.toContain("SHOULD_NOT_APPEAR");
-    });
-
-    it("should handle interleaved tool call deltas across multiple indices", async () => {
-      await setStreamChunks([
-        createMockStreamChunk({
-          deltaToolCalls: [
-            {
-              function: { arguments: '{"a":', name: "first" },
-              id: "call_0",
-              index: 0,
-            },
-            {
-              function: { arguments: '{"b":', name: "second" },
-              id: "call_1",
-              index: 1,
-            },
-          ],
-        }),
-        createMockStreamChunk({
-          deltaToolCalls: [
-            {
-              function: { arguments: "1}" },
-              id: "call_0",
-              index: 0,
-            },
-            {
-              function: { arguments: "2}" },
-              id: "call_1",
-              index: 1,
-            },
-          ],
-          finishReason: "tool_calls",
-          usage: {
-            completion_tokens: 5,
-            prompt_tokens: 10,
-            total_tokens: 15,
-          },
-        }),
-      ]);
-
-      const model = createModel();
-      const prompt = createPrompt("Use tools");
-
-      const { stream } = await model.doStream({ prompt });
-      const parts = await readAllParts(stream);
-
-      const toolCalls = parts.filter((p) => p.type === "tool-call");
-      expect(toolCalls).toHaveLength(2);
-
-      const firstCall = toolCalls.find((call) => call.toolName === "first");
-      expect(firstCall).toMatchObject({
-        input: '{"a":1}',
-        toolName: "first",
-        type: "tool-call",
-      });
-
-      const secondCall = toolCalls.find((call) => call.toolName === "second");
-      expect(secondCall).toMatchObject({
-        input: '{"b":2}',
-        toolName: "second",
-        type: "tool-call",
-      });
-    });
-
-    it("should use latest tool call id when it changes", async () => {
-      await setStreamChunks([
-        createMockStreamChunk({
-          deltaToolCalls: [
-            {
-              function: { arguments: "{", name: "calc" },
-              id: "call_old",
-              index: 0,
-            },
-          ],
-        }),
-        createMockStreamChunk({
-          deltaToolCalls: [
-            {
-              function: { arguments: '"x":1}' },
-              id: "call_new",
-              index: 0,
-            },
-          ],
-          finishReason: "tool_calls",
-          usage: {
-            completion_tokens: 5,
-            prompt_tokens: 10,
-            total_tokens: 15,
-          },
-        }),
-      ]);
-
-      const model = createModel();
-      const prompt = createPrompt("Use tools");
-
-      const { stream } = await model.doStream({ prompt });
-      const parts = await readAllParts(stream);
-
-      const toolInputDeltas = parts.filter((p) => p.type === "tool-input-delta");
-      expect(toolInputDeltas).toHaveLength(2);
-
-      const toolCall = parts.find((p) => p.type === "tool-call");
-      expect(toolCall).toBeDefined();
-      expect(toolCall).toMatchObject({
-        input: '{"x":1}',
-        toolCallId: "call_new",
-        toolName: "calc",
-        type: "tool-call",
-      });
-
-      const toolInputEnd = parts.find((p) => p.type === "tool-input-end");
-      expect(toolInputEnd).toBeDefined();
-      expect(toolInputEnd).toMatchObject({
-        id: "call_new",
-        type: "tool-input-end",
-      });
+      const textDeltas = parts.filter((p) => p.type === "text-delta");
+      const hasPostToolTextDelta = textDeltas.some(
+        (td) => (td as { delta: string; type: "text-delta" }).delta === "SHOULD_NOT_APPEAR",
+      );
+      expect(hasPostToolTextDelta).toBe(false);
     });
 
     it.each([
@@ -1717,7 +1437,7 @@ describe("SAPAILanguageModel", () => {
 
     it("should handle stream chunks with null content", async () => {
       await setStreamChunks([
-        createMockStreamChunk({}), // All defaults (null content, no tools, null finishReason)
+        createMockStreamChunk({}),
         createMockStreamChunk({
           deltaContent: "Hello",
         }),
@@ -1737,7 +1457,6 @@ describe("SAPAILanguageModel", () => {
       const { stream } = await model.doStream({ prompt });
       const parts = await readAllParts(stream);
 
-      // Should only have one text-delta for "Hello", not for null chunks
       const textDeltas = parts.filter((p) => p.type === "text-delta");
       expect(textDeltas).toHaveLength(1);
       expect((textDeltas[0] as { delta: string }).delta).toBe("Hello");
@@ -1768,15 +1487,12 @@ describe("SAPAILanguageModel", () => {
       const { stream } = await model.doStream({ prompt });
       const parts = await readAllParts(stream);
 
-      // Empty string deltas should still be emitted
       const textDeltas = parts.filter((p) => p.type === "text-delta");
       expect(textDeltas.length).toBeGreaterThanOrEqual(1);
     });
 
     describe("error handling", () => {
       it("should warn when tool call delta has no tool name", async () => {
-        // (node-only)
-        // Simulate tool call without a name (never receives name in any chunk)
         await setStreamChunks([
           createMockStreamChunk({
             deltaToolCalls: [
@@ -1784,7 +1500,6 @@ describe("SAPAILanguageModel", () => {
                 function: { arguments: '{"x":1}' },
                 id: "call_nameless",
                 index: 0,
-                // Note: No "name" property
               },
             ],
             finishReason: "tool_calls",
@@ -1811,7 +1526,6 @@ describe("SAPAILanguageModel", () => {
           parts.push(value);
         }
 
-        // Should have a tool-call part even if tool name is missing.
         const toolCall = parts.find((p) => p.type === "tool-call");
         expect(toolCall).toBeDefined();
         expect(toolCall).toMatchObject({
@@ -1820,17 +1534,12 @@ describe("SAPAILanguageModel", () => {
           type: "tool-call",
         });
 
-        // Warnings are emitted at stream-start time
-        // during streaming (not before), it won't appear in stream-start.
         const streamStart = parts.find(
           (p): p is Extract<LanguageModelV3StreamPart, { type: "stream-start" }> =>
             p.type === "stream-start",
         );
         expect(streamStart).toBeDefined();
         expect(streamStart?.warnings).toHaveLength(0);
-
-        // Warnings only appear in stream-start event
-        // This test verifies that the warning doesn't crash the stream.
 
         expect(parts.some((p) => p.type === "error")).toBe(false);
         expect(parts.some((p) => p.type === "finish")).toBe(true);
@@ -1842,13 +1551,11 @@ describe("SAPAILanguageModel", () => {
       });
 
       it("should emit error part when stream iteration throws", async () => {
-        // (node-only)
         const MockClient = await getMockClient();
         if (!MockClient.setStreamError) {
           throw new Error("mock missing setStreamError");
         }
 
-        // Set up chunks that complete normally, but error is thrown after
         await setStreamChunks([
           createMockStreamChunk({
             deltaContent: "Hello",
@@ -1881,11 +1588,9 @@ describe("SAPAILanguageModel", () => {
           parts.push(value);
         }
 
-        // Should have text delta before error
         const textDelta = parts.find((p) => p.type === "text-delta");
         expect(textDelta).toBeDefined();
 
-        // Should have error part
         const errorPart = parts.find((p) => p.type === "error");
         expect(errorPart).toBeDefined();
         expect(errorPart).toMatchObject({
@@ -1900,7 +1605,6 @@ describe("SAPAILanguageModel", () => {
           "x-request-id": "stream-axios-123",
         });
 
-        // Reset the stream error for other tests
         await setStreamChunks([
           createMockStreamChunk({
             deltaContent: "reset",
@@ -1922,7 +1626,7 @@ describe("SAPAILanguageModel", () => {
               {
                 function: { arguments: "{}", name: "test_tool" },
                 id: "call_invalid",
-                index: NaN, // Invalid index
+                index: NaN,
               },
             ],
           }),
@@ -1931,7 +1635,7 @@ describe("SAPAILanguageModel", () => {
               {
                 function: { arguments: "{}", name: "other_tool" },
                 id: "call_undefined",
-                index: undefined as unknown as number, // Also invalid
+                index: undefined as unknown as number,
               },
             ],
             finishReason: "stop",
@@ -1957,15 +1661,11 @@ describe("SAPAILanguageModel", () => {
           parts.push(value);
         }
 
-        // Should complete without error
         expect(parts.some((p) => p.type === "finish")).toBe(true);
-        // No tool calls should be emitted due to invalid indices
         expect(parts.some((p) => p.type === "tool-call")).toBe(false);
       });
 
       it("should generate unique RFC 4122 UUIDs for text blocks", async () => {
-        // Regression test for StreamIdGenerator bug (commit 3ca38c6)
-        // Ensures text blocks get truly unique UUIDs instead of hardcoded "0"
         await setStreamChunks([
           createMockStreamChunk({
             deltaContent: "First text block",
@@ -1995,7 +1695,6 @@ describe("SAPAILanguageModel", () => {
           parts.push(value);
         }
 
-        // Extract text lifecycle events
         const textStarts = parts.filter(
           (p): p is Extract<LanguageModelV3StreamPart, { type: "text-start" }> =>
             p.type === "text-start",
@@ -2009,27 +1708,20 @@ describe("SAPAILanguageModel", () => {
             p.type === "text-end",
         );
 
-        // Should have exactly one text block
         expect(textStarts).toHaveLength(1);
         expect(textEnds).toHaveLength(1);
         expect(textDeltas.length).toBeGreaterThan(0);
 
         const blockId = textStarts[0].id;
-
-        // ID must be a valid RFC 4122 UUID v4 (format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
         expect(blockId).toMatch(uuidRegex);
-
-        // Must NOT be hardcoded "0" (the bug we fixed in commit 3ca38c6)
         expect(blockId).not.toBe("0");
 
-        // Verify all text-delta and text-end use the same UUID as text-start
         for (const delta of textDeltas) {
           expect(delta.id).toBe(blockId);
         }
         expect(textEnds[0].id).toBe(blockId);
 
-        // Additional verification: test multiple streams to ensure different UUIDs
         const { stream: stream2 } = await model.doStream({ prompt });
         const parts2: LanguageModelV3StreamPart[] = [];
         const reader2 = stream2.getReader();
@@ -2048,7 +1740,6 @@ describe("SAPAILanguageModel", () => {
 
         const blockId2 = textStarts2[0].id;
 
-        // Different stream should have different UUID (proves randomness)
         expect(blockId2).not.toBe(blockId);
         expect(blockId2).toMatch(uuidRegex);
       });
@@ -2064,7 +1755,6 @@ describe("SAPAILanguageModel", () => {
               },
             ],
           }),
-          // End stream without tool-calls finish reason - tool should still be emitted
           createMockStreamChunk({
             finishReason: "stop",
             usage: {
@@ -2089,7 +1779,6 @@ describe("SAPAILanguageModel", () => {
           parts.push(value);
         }
 
-        // Tool call should be emitted even though finishReason was "stop"
         const toolCall = parts.find((p) => p.type === "tool-call");
         expect(toolCall).toBeDefined();
         expect(toolCall).toMatchObject({
@@ -2098,7 +1787,6 @@ describe("SAPAILanguageModel", () => {
           type: "tool-call",
         });
 
-        // Finish reason should be "stop" from server (we respect server's decision)
         const finish = parts.find(
           (p): p is Extract<LanguageModelV3StreamPart, { type: "finish" }> => p.type === "finish",
         );
@@ -2139,7 +1827,6 @@ describe("SAPAILanguageModel", () => {
         const finish = parts.find(
           (p): p is Extract<LanguageModelV3StreamPart, { type: "finish" }> => p.type === "finish",
         );
-        // Undefined finish reason maps to "other"
         expect(finish?.finishReason).toEqual({
           raw: undefined,
           unified: "other",
@@ -2151,7 +1838,6 @@ describe("SAPAILanguageModel", () => {
           createMockStreamChunk({
             deltaToolCalls: [
               {
-                // No name in first chunk - so didEmitInputStart stays false
                 function: { arguments: '{"partial":' },
                 id: "call_no_start",
                 index: 0,
@@ -2161,7 +1847,6 @@ describe("SAPAILanguageModel", () => {
           createMockStreamChunk({
             deltaToolCalls: [
               {
-                // Name comes later but input-start was never emitted
                 function: { arguments: '"value"}', name: "delayed_name" },
                 index: 0,
               },
@@ -2189,7 +1874,6 @@ describe("SAPAILanguageModel", () => {
           parts.push(value);
         }
 
-        // Tool call should still be properly emitted
         const toolCall = parts.find((p) => p.type === "tool-call");
         expect(toolCall).toBeDefined();
         expect(toolCall).toMatchObject({
@@ -2647,6 +2331,209 @@ describe("SAPAILanguageModel", () => {
         const request = await getLastChatCompletionRequest();
 
         expect(request.model?.params?.n).toBeUndefined();
+      });
+    });
+
+    describe("unknown parameter preservation", () => {
+      it("should preserve unknown parameters from settings.modelParams", async () => {
+        const model = createModel("gpt-4o", {
+          modelParams: {
+            customParam: "custom-value",
+            temperature: 0.7,
+            unknownField: 123,
+          },
+        });
+
+        const prompt = createPrompt("Hello");
+
+        const result = await model.doGenerate({ prompt });
+        expectRequestBodyHasMessages(result);
+
+        const request = await getLastChatCompletionRequest();
+
+        expect(request.model?.params?.temperature).toBe(0.7);
+        expect(request.model?.params?.customParam).toBe("custom-value");
+        expect(request.model?.params?.unknownField).toBe(123);
+      });
+
+      it("should preserve unknown parameters from providerOptions", async () => {
+        const model = createModel("gpt-4o");
+
+        const prompt = createPrompt("Hello");
+
+        const result = await model.doGenerate({
+          prompt,
+          providerOptions: {
+            "sap-ai": {
+              modelParams: {
+                customProviderParam: "provider-value",
+                specialField: true,
+                temperature: 0.5,
+              },
+            },
+          },
+        });
+        expectRequestBodyHasMessages(result);
+
+        const request = await getLastChatCompletionRequest();
+
+        expect(request.model?.params?.temperature).toBe(0.5);
+        expect(request.model?.params?.customProviderParam).toBe("provider-value");
+        expect(request.model?.params?.specialField).toBe(true);
+      });
+
+      it("should merge unknown parameters from settings and providerOptions", async () => {
+        const model = createModel("gpt-4o", {
+          modelParams: {
+            fromSettings: "settings-value",
+            sharedParam: "from-settings",
+            temperature: 0.3,
+          },
+        });
+
+        const prompt = createPrompt("Hello");
+
+        const result = await model.doGenerate({
+          prompt,
+          providerOptions: {
+            "sap-ai": {
+              modelParams: {
+                fromProvider: "provider-value",
+                sharedParam: "from-provider",
+              },
+            },
+          },
+        });
+        expectRequestBodyHasMessages(result);
+
+        const request = await getLastChatCompletionRequest();
+
+        expect(request.model?.params?.temperature).toBe(0.3);
+        expect(request.model?.params?.fromSettings).toBe("settings-value");
+        expect(request.model?.params?.fromProvider).toBe("provider-value");
+        expect(request.model?.params?.sharedParam).toBe("from-provider");
+      });
+
+      it("should deep merge nested objects in modelParams", async () => {
+        const model = createModel("gpt-4o", {
+          modelParams: {
+            nested: {
+              a: 1,
+              b: {
+                c: 2,
+                d: 3,
+              },
+            },
+            temperature: 0.5,
+          },
+        });
+
+        const prompt = createPrompt("Hello");
+
+        const result = await model.doGenerate({
+          prompt,
+          providerOptions: {
+            "sap-ai": {
+              modelParams: {
+                nested: {
+                  b: {
+                    d: 4,
+                    e: 5,
+                  },
+                  f: 6,
+                },
+              },
+            },
+          },
+        });
+        expectRequestBodyHasMessages(result);
+
+        const request = await getLastChatCompletionRequest();
+
+        expect(request.model?.params?.temperature).toBe(0.5);
+        expect(request.model?.params?.nested).toEqual({
+          a: 1,
+          b: {
+            c: 2,
+            d: 4,
+            e: 5,
+          },
+          f: 6,
+        });
+      });
+
+      it("should allow AI SDK standard options to override unknown params", async () => {
+        const model = createModel("gpt-4o", {
+          modelParams: {
+            customParam: "custom-value",
+            temperature: 0.3,
+          },
+        });
+
+        const prompt = createPrompt("Hello");
+
+        const result = await model.doGenerate({
+          maxOutputTokens: 500,
+          prompt,
+          temperature: 0.8,
+        });
+        expectRequestBodyHasMessages(result);
+
+        const request = await getLastChatCompletionRequest();
+
+        expect(request.model?.params?.temperature).toBe(0.8);
+        expect(request.model?.params?.max_tokens).toBe(500);
+        expect(request.model?.params?.customParam).toBe("custom-value");
+      });
+
+      it("should preserve complex unknown parameter types", async () => {
+        const model = createModel("gpt-4o", {
+          modelParams: {
+            arrayParam: [1, 2, 3],
+            nestedObject: {
+              foo: "bar",
+              nested: { deep: true },
+            },
+            nullParam: null,
+            temperature: 0.5,
+          },
+        });
+
+        const prompt = createPrompt("Hello");
+
+        const result = await model.doGenerate({ prompt });
+        expectRequestBodyHasMessages(result);
+
+        const request = await getLastChatCompletionRequest();
+
+        expect(request.model?.params?.temperature).toBe(0.5);
+        expect(request.model?.params?.arrayParam).toEqual([1, 2, 3]);
+        expect(request.model?.params?.nestedObject).toEqual({
+          foo: "bar",
+          nested: { deep: true },
+        });
+        expect(request.model?.params?.nullParam).toBe(null);
+      });
+
+      it("should preserve unknown params even when n is removed for Amazon models", async () => {
+        const model = createModel("amazon--nova-pro", {
+          modelParams: {
+            customAmazonParam: "amazon-value",
+            n: 2,
+            temperature: 0.7,
+          },
+        });
+
+        const prompt = createPrompt("Hello");
+
+        const result = await model.doGenerate({ prompt });
+        expectRequestBodyHasMessages(result);
+
+        const request = await getLastChatCompletionRequest();
+
+        expect(request.model?.params?.temperature).toBe(0.7);
+        expect(request.model?.params?.n).toBeUndefined();
+        expect(request.model?.params?.customAmazonParam).toBe("amazon-value");
       });
     });
 

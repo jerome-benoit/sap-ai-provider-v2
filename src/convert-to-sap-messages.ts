@@ -14,76 +14,31 @@ import {
 import { Buffer } from "node:buffer";
 
 /**
- * Converts AI SDK prompt format to SAP AI SDK ChatMessage format.
+ * Converts Vercel AI SDK prompt format to SAP AI SDK ChatMessage format.
  *
- * Transforms the AI SDK prompt format into the ChatMessage format
- * expected by SAP AI SDK's OrchestrationClient.
- *
- * **Supported Features:**
- * - Text messages (system, user, assistant)
- * - Multi-modal messages (text + images)
- * - Tool calls and tool results
- * - Reasoning parts (optional)
- * - Conversation history
- *
- * **Limitations:**
- * - Images must be in data URL format or accessible HTTPS URLs
- * - Audio messages are not supported
- * - File attachments (non-image) are not supported
- *
- * **Behavior:**
- * - Reasoning parts are dropped by default; when enabled via `includeReasoning`, they are preserved inline as `<think>...</think>` markers
+ * Supports text messages, multi-modal (text + images), tool calls/results, and reasoning parts.
+ * Images must be data URLs or HTTPS URLs. Audio and non-image files are not supported.
+ * Reasoning parts are dropped by default; enable `includeReasoning` to preserve as `<think>...</think>`.
+ * @module convert-to-sap-messages
  * @see {@link https://sdk.vercel.ai/docs/ai-sdk-core/prompt-engineering Vercel AI SDK Prompt Engineering}
  * @see {@link https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/orchestration SAP AI Core Orchestration}
- * @param prompt - The AI SDK prompt to convert
- * @param options - Optional conversion settings
- * @returns Array of SAP AI SDK compatible ChatMessage objects
- * @throws {UnsupportedFunctionalityError} When unsupported message types are encountered
- * @example
- * ```typescript
- * const prompt = [
- *   { role: 'system', content: 'You are a helpful assistant.' },
- *   { role: 'user', content: [{ type: 'text', text: 'Hello!' }] }
- * ];
- *
- * const sapMessages = convertToSAPMessages(prompt);
- * // Result: [
- * //   { role: 'system', content: 'You are a helpful assistant.' },
- * //   { role: 'user', content: 'Hello!' }
- * // ]
- * ```
- * @example
- * **Multi-modal with Image**
- * ```typescript
- * const prompt = [
- *   {
- *     role: 'user',
- *     content: [
- *       { type: 'text', text: 'What do you see in this image?' },
- *       { type: 'file', mediaType: 'image/jpeg', data: 'base64...' }
- *     ]
- *   }
- * ];
- *
- * const sapMessages = convertToSAPMessages(prompt);
- * ```
  */
+
 /**
- * Options for converting AI SDK prompts to SAP messages.
+ * Options for converting Vercel AI SDK prompts to SAP AI SDK messages.
  */
 export interface ConvertToSAPMessagesOptions {
   /**
-   * Include assistant reasoning parts in the converted messages.
+   * Whether to include assistant reasoning parts in the converted messages.
    *
-   * When false (default), reasoning content is dropped
-   * When true, reasoning is preserved as `<think>...</think>` markers
+   * When false (default), reasoning content is dropped.
+   * When true, reasoning is preserved as `<think>...</think>` markers.
    */
   readonly includeReasoning?: boolean;
 }
 
 /**
- * User chat message content item for multi-modal messages.
- * Maps to SAP AI SDK format for user message content.
+ * Multi-modal content item for user messages.
  * @internal
  */
 interface UserContentItem {
@@ -95,10 +50,19 @@ interface UserContentItem {
 }
 
 /**
- * Converts AI SDK prompt format to SAP AI SDK ChatMessage format.
- * @param prompt - The AI SDK prompt to convert
- * @param options - Optional conversion settings
- * @returns Array of SAP AI SDK compatible ChatMessage objects
+ * Converts Vercel AI SDK prompt format to SAP AI SDK ChatMessage format.
+ * @param prompt - The Vercel AI SDK prompt to convert.
+ * @param options - Optional conversion settings.
+ * @returns Array of SAP AI SDK compatible ChatMessage objects.
+ * @throws {UnsupportedFunctionalityError} When unsupported message types are encountered.
+ * @example
+ * ```typescript
+ * const prompt = [
+ *   { role: 'system', content: 'You are a helpful assistant.' },
+ *   { role: 'user', content: [{ type: 'text', text: 'Hello!' }] }
+ * ];
+ * const sapMessages = convertToSAPMessages(prompt);
+ * ```
  */
 export function convertToSAPMessages(
   prompt: LanguageModelV3Prompt,
@@ -120,8 +84,6 @@ export function convertToSAPMessages(
         for (const part of message.content) {
           switch (part.type) {
             case "reasoning": {
-              // Reasoning parts are converted to XML markers for preservation
-              // When disabled (default), reasoning content is omitted from the prompt
               if (includeReasoning && part.text) {
                 text += `<think>${part.text}</think>`;
               }
@@ -132,21 +94,16 @@ export function convertToSAPMessages(
               break;
             }
             case "tool-call": {
-              // Normalize tool call input: validate and convert to JSON string
-              // AI SDK provides either JSON strings or objects; SAP expects valid JSON
+              // Normalize tool call input to JSON string (Vercel AI SDK provides strings or objects)
               let argumentsJson: string;
-
               if (typeof part.input === "string") {
-                // Validate it's valid JSON before passing it through
                 try {
                   JSON.parse(part.input);
                   argumentsJson = part.input;
                 } catch {
-                  // Not valid JSON, stringify the string itself
                   argumentsJson = JSON.stringify(part.input);
                 }
               } else {
-                // Object: stringify it
                 argumentsJson = JSON.stringify(part.input);
               }
 
@@ -183,7 +140,6 @@ export function convertToSAPMessages(
 
       case "tool": {
         for (const part of message.content) {
-          // Only process tool-result parts (approval responses are not supported)
           if (part.type === "tool-result") {
             const toolMessage: ToolChatMessage = {
               content: JSON.stringify(part.output),
@@ -202,14 +158,12 @@ export function convertToSAPMessages(
         for (const part of message.content) {
           switch (part.type) {
             case "file": {
-              // Only image files are supported for multi-modal inputs in SAP AI Core
               if (!part.mediaType.startsWith("image/")) {
                 throw new UnsupportedFunctionalityError({
                   functionality: "Only image files are supported",
                 });
               }
 
-              // Validate specific image formats supported by most models
               const supportedFormats = [
                 "image/png",
                 "image/jpeg",
@@ -224,22 +178,18 @@ export function convertToSAPMessages(
                 );
               }
 
-              // Convert image data to data URL format supporting multiple input types
               let imageUrl: string;
-
               if (part.data instanceof URL) {
                 imageUrl = part.data.toString();
               } else if (typeof part.data === "string") {
                 imageUrl = `data:${part.mediaType};base64,${part.data}`;
               } else if (part.data instanceof Uint8Array) {
-                // Convert Uint8Array to base64 via Node.js Buffer
                 const base64Data = Buffer.from(part.data).toString("base64");
                 imageUrl = `data:${part.mediaType};base64,${base64Data}`;
               } else if (Buffer.isBuffer(part.data)) {
                 const base64Data = Buffer.from(part.data).toString("base64");
                 imageUrl = `data:${part.mediaType};base64,${base64Data}`;
               } else {
-                // Defensive fallback for unexpected data types
                 const maybeBufferLike = part.data as unknown;
 
                 if (
@@ -284,8 +234,6 @@ export function convertToSAPMessages(
           }
         }
 
-        // If only text content, use simple string format
-        // Otherwise use array format for multi-modal
         const userMessage: UserChatMessage =
           contentParts.length === 1 && contentParts[0].type === "text"
             ? {
