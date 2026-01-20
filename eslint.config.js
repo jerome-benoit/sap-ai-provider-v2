@@ -7,7 +7,7 @@ import tseslint from "typescript-eslint";
 
 export default defineConfig(
   {
-    ignores: ["dist/**", "node_modules/**", "coverage/**"],
+    ignores: ["dist/**", "node_modules/**", "coverage/**", "examples/example-embeddings.ts"],
   },
   eslint.configs.recommended,
   jsdoc.configs["flat/recommended-typescript"],
