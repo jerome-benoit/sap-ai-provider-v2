@@ -24,6 +24,11 @@ describe("createSAPAIProvider", () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(provider.languageModel).toBeDefined();
     expect(typeof provider.languageModel).toBe("function");
+
+    // V2 provider should also have chat method (custom convenience method)
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(provider.chat).toBeDefined();
+    expect(typeof provider.chat).toBe("function");
   });
 
   it("should create a model when called", () => {
@@ -46,6 +51,21 @@ describe("createSAPAIProvider", () => {
       modelParams: { temperature: 0.8 },
     });
     expect(modelWithSettings).toBeDefined();
+  });
+
+  it("should create model via chat method with optional settings", () => {
+    const provider = createSAPAIProvider();
+    const model = provider.chat("gpt-4o");
+    expect(model).toBeDefined();
+    expect(model.modelId).toBe("gpt-4o");
+    expect(model.provider).toBe("sap-ai.chat");
+    expect(model.specificationVersion).toBe("v2");
+
+    const modelWithSettings = provider.chat("gpt-4o", {
+      modelParams: { temperature: 0.8 },
+    });
+    expect(modelWithSettings).toBeDefined();
+    expect(modelWithSettings.modelId).toBe("gpt-4o");
   });
 
   it("should accept resource group configuration", () => {
@@ -194,7 +214,7 @@ describe("createSAPAIProvider", () => {
     }).toThrow("cannot be called with the new keyword");
   });
 
-  describe("ProviderV2 compliance", () => {
+  describe("provider v2 compliance", () => {
     it("should expose languageModel method", () => {
       const provider = createSAPAIProvider();
       // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -293,7 +313,7 @@ describe("createSAPAIProvider", () => {
     });
   });
 
-  describe("Embedding models", () => {
+  describe("embedding models", () => {
     it("should create embedding model with default maxEmbeddingsPerCall", () => {
       const provider = createSAPAIProvider();
       const model = provider.textEmbeddingModel("text-embedding-ada-002");
@@ -398,8 +418,22 @@ describe("sapai default provider", () => {
     expect(typeof sapai).toBe("function");
   });
 
+  it("should expose chat method", () => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(sapai.chat).toBeDefined();
+    expect(typeof sapai.chat).toBe("function");
+  });
+
   it("should create a model", () => {
     const model = sapai("gpt-4o");
+    expect(model).toBeDefined();
+    expect(model.modelId).toBe("gpt-4o");
+    expect(model.provider).toBe("sap-ai.chat");
+    expect(model.specificationVersion).toBe("v2");
+  });
+
+  it("should create a model via chat method", () => {
+    const model = sapai.chat("gpt-4o");
     expect(model).toBeDefined();
     expect(model.modelId).toBe("gpt-4o");
     expect(model.provider).toBe("sap-ai.chat");
@@ -412,7 +446,7 @@ describe("sapai default provider", () => {
     expect(model.modelId).toBe("gpt-4o");
   });
 
-  describe("ProviderV2 compliance", () => {
+  describe("provider v2 compliance", () => {
     it("should expose languageModel entrypoint", () => {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(sapai.languageModel).toBeDefined();
@@ -464,7 +498,7 @@ describe("sapai default provider", () => {
     });
   });
 
-  describe("Embedding models via default provider", () => {
+  describe("embedding models via default provider", () => {
     it("should create embedding model via textEmbeddingModel", () => {
       const model = sapai.textEmbeddingModel("text-embedding-ada-002");
       expect(model).toBeDefined();
