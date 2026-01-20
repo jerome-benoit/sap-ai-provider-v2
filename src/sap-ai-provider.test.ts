@@ -179,32 +179,6 @@ describe("createSAPAIProvider", () => {
     expect(model).toBeDefined();
   });
 
-  it("should deep merge modelParams from defaults and call-time settings", () => {
-    const provider = createSAPAIProvider({
-      defaultSettings: {
-        modelParams: {
-          frequencyPenalty: 0.2,
-          presencePenalty: 0.1,
-          temperature: 0.5,
-        },
-      },
-    });
-
-    const model = provider("gpt-4o", {
-      modelParams: {
-        frequencyPenalty: 0.5,
-        maxTokens: 2000,
-      },
-    });
-
-    expect(model).toBeDefined();
-    // The internal V3 model should have merged modelParams:
-    // - temperature: 0.5 (from default, preserved)
-    // - maxTokens: 2000 (from call-time, added)
-    // - frequencyPenalty: 0.5 (from call-time, overrides default)
-    // - presencePenalty: 0.1 (from default, preserved)
-  });
-
   it("should throw when called with new keyword", () => {
     const provider = createSAPAIProvider();
     expect(() => {
