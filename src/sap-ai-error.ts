@@ -406,6 +406,31 @@ export function convertToAISDKError(
 }
 
 /**
+ * Normalizes various header formats to a string record.
+ * @param headers - The headers to normalize (various formats accepted).
+ * @returns The normalized headers, or undefined if empty or invalid.
+ */
+export function normalizeHeaders(headers: unknown): Record<string, string> | undefined {
+  if (!headers || typeof headers !== "object") return undefined;
+
+  const record = headers as Record<string, unknown>;
+  const entries = Object.entries(record).flatMap(([key, value]) => {
+    if (typeof value === "string") return [[key, value]];
+    if (Array.isArray(value)) {
+      const strings = value.filter((item): item is string => typeof item === "string").join("; ");
+      return strings.length > 0 ? [[key, strings]] : [];
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return [[key, String(value)]];
+    }
+    return [];
+  });
+
+  if (entries.length === 0) return undefined;
+  return Object.fromEntries(entries) as Record<string, string>;
+}
+
+/**
  * Extracts model identifier from error message or location.
  * @param message - The error message to parse.
  * @param location - Optional error location string.
@@ -533,32 +558,6 @@ function isRetryable(statusCode: number): boolean {
     statusCode === HTTP_STATUS.RATE_LIMIT ||
     (statusCode >= HTTP_STATUS.INTERNAL_ERROR && statusCode < 600)
   );
-}
-
-/**
- * Normalizes various header formats to a string record.
- * @param headers - The headers to normalize (various formats accepted).
- * @returns The normalized headers, or undefined if empty or invalid.
- * @internal
- */
-function normalizeHeaders(headers: unknown): Record<string, string> | undefined {
-  if (!headers || typeof headers !== "object") return undefined;
-
-  const record = headers as Record<string, unknown>;
-  const entries = Object.entries(record).flatMap(([key, value]) => {
-    if (typeof value === "string") return [[key, value]];
-    if (Array.isArray(value)) {
-      const strings = value.filter((item): item is string => typeof item === "string").join("; ");
-      return strings.length > 0 ? [[key, strings]] : [];
-    }
-    if (typeof value === "number" || typeof value === "boolean") {
-      return [[key, String(value)]];
-    }
-    return [];
-  });
-
-  if (entries.length === 0) return undefined;
-  return Object.fromEntries(entries) as Record<string, string>;
 }
 
 /**

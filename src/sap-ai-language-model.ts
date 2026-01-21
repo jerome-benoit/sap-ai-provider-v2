@@ -39,7 +39,7 @@ interface FunctionToolWithParameters extends LanguageModelV3FunctionTool {
 }
 
 import { convertToSAPMessages } from "./convert-to-sap-messages";
-import { convertToAISDKError } from "./sap-ai-error";
+import { convertToAISDKError, normalizeHeaders } from "./sap-ai-error";
 import {
   getProviderName,
   sapAILanguageModelProviderOptions,
@@ -179,26 +179,7 @@ export class SAPAILanguageModel implements LanguageModelV3 {
         requestBody,
         options.abortSignal ? { signal: options.abortSignal } : undefined,
       );
-      const responseHeadersRaw = response.rawResponse.headers as
-        | Record<string, unknown>
-        | undefined;
-      const responseHeaders = responseHeadersRaw
-        ? Object.fromEntries(
-            Object.entries(responseHeadersRaw).flatMap(([key, value]) => {
-              if (typeof value === "string") return [[key, value]];
-              if (Array.isArray(value)) {
-                const strings = value
-                  .filter((item): item is string => typeof item === "string")
-                  .join("; ");
-                return strings.length > 0 ? [[key, strings]] : [];
-              }
-              if (typeof value === "number" || typeof value === "boolean") {
-                return [[key, String(value)]];
-              }
-              return [];
-            }),
-          )
-        : undefined;
+      const responseHeaders = normalizeHeaders(response.rawResponse.headers);
 
       const content: LanguageModelV3Content[] = [];
 
