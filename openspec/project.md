@@ -32,8 +32,8 @@ the familiar Vercel AI SDK interface.
 
 **Dependencies:**
 
-- **@ai-sdk/provider** (^3.0.2) - Vercel AI SDK provider interfaces
-- **@ai-sdk/provider-utils** (^4.0.5) - Vercel AI SDK utilities
+- **@ai-sdk/provider** (^3.0.4) - Vercel AI SDK provider interfaces
+- **@ai-sdk/provider-utils** (^4.0.8) - Vercel AI SDK utilities
 - **@sap-ai-sdk/orchestration** (^2.5.0) - Official SAP AI SDK
 - **zod** (^4.3.5) - Schema validation
 - **zod-to-json-schema** (^3.25.1) - Tool schema conversion
@@ -222,7 +222,7 @@ npm run prepublishOnly  # Runs before npm publish
 
 - Must implement `LanguageModelV3` and `EmbeddingModelV3` interfaces completely
 - Follow Vercel AI SDK conventions for errors, streaming, tools
-- Maintain compatibility with AI SDK v6.0+
+- Maintain compatibility with AI SDK v5.0+ (v6.0+ recommended)
 
 **Breaking Changes:**
 

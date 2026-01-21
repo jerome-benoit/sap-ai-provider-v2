@@ -472,7 +472,7 @@ exponential backoff.
 - Authentication via `AICORE_SERVICE_KEY` environment variable (no more
   `serviceKey` option)
 - Uses official SAP AI SDK for authentication and API communication
-- Requires Vercel AI SDK v6.0+
+- Requires Vercel AI Vercel AI SDK v5.0+ (v6.0+ recommended)
 
 **New Features:**
 
