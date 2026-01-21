@@ -99,7 +99,6 @@ export type {
   DeveloperChatMessage,
   DocumentTranslationApplyToSelector,
   FunctionObject,
-  isConfigReference,
   LlmModelDetails,
   LlmModelParams,
   OrchestrationConfigRef,
@@ -115,7 +114,9 @@ export type {
 } from "@sap-ai-sdk/orchestration";
 
 export {
+  OrchestrationEmbeddingResponse,
   OrchestrationResponse,
+  OrchestrationStream,
   OrchestrationStreamChunkResponse,
   OrchestrationStreamResponse,
 } from "@sap-ai-sdk/orchestration";

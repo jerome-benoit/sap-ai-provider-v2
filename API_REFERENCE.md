@@ -78,7 +78,6 @@ consistently:
   - [`OrchestrationErrorResponse`](#orchestrationerrorresponse)
 - [Utility Functions](#utility-functions)
   - [`getProviderName(providerIdentifier)`](#getprovidernameprovideridentifier)
-  - [`convertToSAPMessages(prompt)`](#converttosapmessagesprompt)
   - [`buildDpiMaskingProvider(config)`](#builddpimaskingproviderconfig)
   - [`buildAzureContentSafetyFilter(type, config?)`](#buildazurecontentsafetyfiltertype-config)
   - [`buildLlamaGuard38BFilter(type, categories)`](#buildllamaguard38bfiltertype-categories)
@@ -1707,46 +1706,6 @@ const result = await generateText({ model, prompt: "Hello" });
 // Use getProviderName to access metadata with the correct key
 const providerName = getProviderName(model.provider); // "my-sap"
 const metadata = result.providerMetadata?.[providerName];
-```
-
----
-
-### `convertToSAPMessages(prompt)`
-
-Converts Vercel AI SDK prompt format to SAP AI Core message format.
-
-**Signature:**
-
-```typescript
-function convertToSAPMessages(prompt: LanguageModelV3Prompt): SAPMessage[];
-```
-
-**Parameters:**
-
-- `prompt`: Vercel AI SDK prompt array
-
-**Returns:** SAP AI Core compatible message array
-
-**Supported Features:**
-
-- Text messages (system, user, assistant)
-- Multi-modal messages (text + images)
-- Tool calls and tool results
-- Conversation history
-
-**Throws:** `UnsupportedFunctionalityError` for unsupported message types
-
-**Example:**
-
-```typescript
-import { convertToSAPMessages } from "@mymediset/sap-ai-provider";
-
-const prompt = [
-  { role: "system", content: "You are helpful" },
-  { role: "user", content: "Hello!" },
-];
-
-const sapMessages = convertToSAPMessages(prompt);
 ```
 
 ---

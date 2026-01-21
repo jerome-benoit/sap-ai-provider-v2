@@ -67,7 +67,6 @@ export type {
   FilteringModule,
   FunctionObject,
   GroundingModule,
-  isConfigReference,
   LlmModelDetails,
   LlmModelParams,
   MaskingModule,
@@ -99,7 +98,9 @@ export {
  * Response classes from the SAP AI SDK for orchestration results.
  */
 export {
+  OrchestrationEmbeddingResponse,
   OrchestrationResponse,
+  OrchestrationStream,
   OrchestrationStreamChunkResponse,
   OrchestrationStreamResponse,
 } from "./sap-ai-settings.js";
