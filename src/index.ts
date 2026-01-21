@@ -106,6 +106,11 @@ export {
 } from "./sap-ai-settings.js";
 
 /**
+ * Package version, injected at build time.
+ */
+export { VERSION } from "./version.js";
+
+/**
  * Direct access to SAP AI SDK OrchestrationClient.
  *
  * For advanced users who need to use the SAP AI SDK directly.
