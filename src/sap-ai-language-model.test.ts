@@ -2531,6 +2531,7 @@ describe("SAPAILanguageModel", () => {
           testName: "temperature",
         },
         {
+          camelCaseKey: "maxTokens",
           expectedKey: "max_tokens",
           expectedValue: 1000,
           optionKey: "maxOutputTokens",
@@ -2539,9 +2540,30 @@ describe("SAPAILanguageModel", () => {
           settingsValue: 500,
           testName: "maxOutputTokens",
         },
+        {
+          camelCaseKey: "topP",
+          expectedKey: "top_p",
+          expectedValue: 0.9,
+          optionKey: "topP",
+          optionValue: 0.9,
+          settingsKey: "topP",
+          settingsValue: 0.5,
+          testName: "topP",
+        },
+        {
+          camelCaseKey: "topK",
+          expectedKey: "top_k",
+          expectedValue: 40,
+          optionKey: "topK",
+          optionValue: 40,
+          settingsKey: "topK",
+          settingsValue: 20,
+          testName: "topK",
+        },
       ])(
         "should prefer options.$testName over settings.modelParams.$settingsKey",
         async ({
+          camelCaseKey,
           expectedKey,
           expectedValue,
           optionKey,
@@ -2567,41 +2589,51 @@ describe("SAPAILanguageModel", () => {
           const request = await getLastChatCompletionRequest();
 
           expect(request.model?.params?.[expectedKey]).toBe(expectedValue);
+
+          if (camelCaseKey && camelCaseKey !== expectedKey) {
+            expect(request.model?.params?.[camelCaseKey]).toBeUndefined();
+          }
         },
       );
 
       it.each([
         {
+          camelCaseKey: "topP",
           expectedKey: "top_p",
           expectedValue: 0.9,
           paramName: "topP",
           paramValue: 0.9,
         },
         {
+          camelCaseKey: "topK",
           expectedKey: "top_k",
           expectedValue: 40,
           paramName: "topK",
           paramValue: 40,
         },
         {
+          camelCaseKey: "frequencyPenalty",
           expectedKey: "frequency_penalty",
           expectedValue: 0.5,
           paramName: "frequencyPenalty",
           paramValue: 0.5,
         },
         {
+          camelCaseKey: "presencePenalty",
           expectedKey: "presence_penalty",
           expectedValue: 0.3,
           paramName: "presencePenalty",
           paramValue: 0.3,
         },
         {
+          camelCaseKey: "stopSequences",
           expectedKey: "stop",
           expectedValue: ["END", "STOP"],
           paramName: "stopSequences",
           paramValue: ["END", "STOP"],
         },
         {
+          camelCaseKey: "seed",
           expectedKey: "seed",
           expectedValue: 42,
           paramName: "seed",
@@ -2609,7 +2641,7 @@ describe("SAPAILanguageModel", () => {
         },
       ])(
         "should pass $paramName from options to model params",
-        async ({ expectedKey, expectedValue, paramName, paramValue }) => {
+        async ({ camelCaseKey, expectedKey, expectedValue, paramName, paramValue }) => {
           const model = createModel();
           const prompt = createPrompt("Hello");
 
@@ -2623,6 +2655,10 @@ describe("SAPAILanguageModel", () => {
           const request = await getLastChatCompletionRequest();
 
           expect(request.model?.params?.[expectedKey]).toEqual(expectedValue);
+
+          if (camelCaseKey !== expectedKey) {
+            expect(request.model?.params?.[camelCaseKey]).toBeUndefined();
+          }
         },
       );
     });
@@ -2651,7 +2687,9 @@ describe("SAPAILanguageModel", () => {
         const model = createModel("gpt-4o", {
           modelParams: {
             customParam: "custom-value",
+            maxTokens: 100,
             temperature: 0.7,
+            topP: 0.8,
             unknownField: 123,
           },
         });
@@ -2666,6 +2704,11 @@ describe("SAPAILanguageModel", () => {
         expect(request.model?.params?.temperature).toBe(0.7);
         expect(request.model?.params?.customParam).toBe("custom-value");
         expect(request.model?.params?.unknownField).toBe(123);
+
+        expect(request.model?.params?.max_tokens).toBe(100);
+        expect(request.model?.params?.maxTokens).toBeUndefined();
+        expect(request.model?.params?.top_p).toBe(0.8);
+        expect(request.model?.params?.topP).toBeUndefined();
       });
 
       it("should preserve unknown parameters from providerOptions", async () => {
@@ -2679,6 +2722,8 @@ describe("SAPAILanguageModel", () => {
             "sap-ai": {
               modelParams: {
                 customProviderParam: "provider-value",
+                frequencyPenalty: 0.7,
+                presencePenalty: 0.2,
                 specialField: true,
                 temperature: 0.5,
               },
@@ -2692,12 +2737,18 @@ describe("SAPAILanguageModel", () => {
         expect(request.model?.params?.temperature).toBe(0.5);
         expect(request.model?.params?.customProviderParam).toBe("provider-value");
         expect(request.model?.params?.specialField).toBe(true);
+
+        expect(request.model?.params?.frequency_penalty).toBe(0.7);
+        expect(request.model?.params?.frequencyPenalty).toBeUndefined();
+        expect(request.model?.params?.presence_penalty).toBe(0.2);
+        expect(request.model?.params?.presencePenalty).toBeUndefined();
       });
 
       it("should merge unknown parameters from settings and providerOptions", async () => {
         const model = createModel("gpt-4o", {
           modelParams: {
             fromSettings: "settings-value",
+            maxTokens: 800,
             sharedParam: "from-settings",
             temperature: 0.3,
           },
@@ -2712,6 +2763,7 @@ describe("SAPAILanguageModel", () => {
               modelParams: {
                 fromProvider: "provider-value",
                 sharedParam: "from-provider",
+                topP: 0.95,
               },
             },
           },
@@ -2724,6 +2776,11 @@ describe("SAPAILanguageModel", () => {
         expect(request.model?.params?.fromSettings).toBe("settings-value");
         expect(request.model?.params?.fromProvider).toBe("provider-value");
         expect(request.model?.params?.sharedParam).toBe("from-provider");
+
+        expect(request.model?.params?.max_tokens).toBe(800);
+        expect(request.model?.params?.maxTokens).toBeUndefined();
+        expect(request.model?.params?.top_p).toBe(0.95);
+        expect(request.model?.params?.topP).toBeUndefined();
       });
 
       it("should deep merge nested objects in modelParams", async () => {
@@ -2795,6 +2852,7 @@ describe("SAPAILanguageModel", () => {
 
         expect(request.model?.params?.temperature).toBe(0.8);
         expect(request.model?.params?.max_tokens).toBe(500);
+        expect(request.model?.params?.maxTokens).toBeUndefined();
         expect(request.model?.params?.customParam).toBe("custom-value");
       });
 

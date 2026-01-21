@@ -49,6 +49,19 @@ import {
 import { SAPAIModelId, SAPAISettings } from "./sap-ai-settings";
 
 /**
+ * Parameter mapping for AI SDK options → SAP model params.
+ * @internal
+ */
+interface ParamMapping {
+  /** camelCase key in modelParams to read from and remove (e.g., 'maxTokens', 'topP') */
+  readonly camelCaseKey?: string;
+  /** AI SDK option key (e.g., 'maxOutputTokens', 'topP') */
+  readonly optionKey?: string;
+  /** Output key for SAP API (e.g., 'max_tokens', 'top_p') */
+  readonly outputKey: string;
+}
+
+/**
  * Internal configuration for SAP AI Language Model.
  * @internal
  */
@@ -76,6 +89,25 @@ type SAPResponseFormat = Template["response_format"];
 type SAPToolParameters = Record<string, unknown> & {
   type: "object";
 };
+
+/**
+ * Parameter mappings for override resolution and camelCase conversion.
+ * @internal
+ */
+const PARAM_MAPPINGS: readonly ParamMapping[] = [
+  { camelCaseKey: "maxTokens", optionKey: "maxOutputTokens", outputKey: "max_tokens" },
+  { camelCaseKey: "temperature", optionKey: "temperature", outputKey: "temperature" },
+  { camelCaseKey: "topP", optionKey: "topP", outputKey: "top_p" },
+  { camelCaseKey: "topK", optionKey: "topK", outputKey: "top_k" },
+  {
+    camelCaseKey: "frequencyPenalty",
+    optionKey: "frequencyPenalty",
+    outputKey: "frequency_penalty",
+  },
+  { camelCaseKey: "presencePenalty", optionKey: "presencePenalty", outputKey: "presence_penalty" },
+  { camelCaseKey: "seed", optionKey: "seed", outputKey: "seed" },
+  { camelCaseKey: "parallel_tool_calls", outputKey: "parallel_tool_calls" },
+] as const;
 
 /**
  * @internal
@@ -716,37 +748,15 @@ export class SAPAILanguageModel implements LanguageModelV3 {
       sapOptions?.modelParams ?? {},
     );
 
-    const maxTokens =
-      options.maxOutputTokens ??
-      sapOptions?.modelParams?.maxTokens ??
-      this.settings.modelParams?.maxTokens;
-    if (maxTokens !== undefined) modelParams.max_tokens = maxTokens;
+    applyParameterOverrides(
+      modelParams,
+      options as Record<string, unknown>,
+      sapOptions?.modelParams as Record<string, unknown> | undefined,
+      this.settings.modelParams as Record<string, unknown> | undefined,
+    );
 
-    const temperature =
-      options.temperature ??
-      sapOptions?.modelParams?.temperature ??
-      this.settings.modelParams?.temperature;
-    if (temperature !== undefined) modelParams.temperature = temperature;
-
-    const topP = options.topP ?? sapOptions?.modelParams?.topP ?? this.settings.modelParams?.topP;
-    if (topP !== undefined) modelParams.top_p = topP;
-
-    if (options.topK !== undefined) modelParams.top_k = options.topK;
-
-    const frequencyPenalty =
-      options.frequencyPenalty ??
-      sapOptions?.modelParams?.frequencyPenalty ??
-      this.settings.modelParams?.frequencyPenalty;
-    if (frequencyPenalty !== undefined) {
-      modelParams.frequency_penalty = frequencyPenalty;
-    }
-
-    const presencePenalty =
-      options.presencePenalty ??
-      sapOptions?.modelParams?.presencePenalty ??
-      this.settings.modelParams?.presencePenalty;
-    if (presencePenalty !== undefined) {
-      modelParams.presence_penalty = presencePenalty;
+    if (options.stopSequences && options.stopSequences.length > 0) {
+      modelParams.stop = options.stopSequences;
     }
 
     if (supportsN) {
@@ -756,21 +766,6 @@ export class SAPAILanguageModel implements LanguageModelV3 {
       }
     } else {
       delete modelParams.n;
-    }
-
-    const parallelToolCalls =
-      sapOptions?.modelParams?.parallel_tool_calls ??
-      this.settings.modelParams?.parallel_tool_calls;
-    if (parallelToolCalls !== undefined) {
-      modelParams.parallel_tool_calls = parallelToolCalls;
-    }
-
-    if (options.stopSequences && options.stopSequences.length > 0) {
-      modelParams.stop = options.stopSequences;
-    }
-
-    if (options.seed !== undefined) {
-      modelParams.seed = options.seed;
     }
 
     validateModelParamsWithWarnings(
@@ -894,6 +889,38 @@ export class SAPAILanguageModel implements LanguageModelV3 {
    */
   private createClient(config: OrchestrationModuleConfig): OrchestrationClient {
     return new OrchestrationClient(config, this.config.deploymentConfig, this.config.destination);
+  }
+}
+
+/**
+ * Applies parameter overrides from AI SDK options and modelParams, with camelCase → snake_case conversion.
+ * @param modelParams - The model parameters object (modified in place).
+ * @param options - AI SDK language model call options.
+ * @param sapModelParams - SAP-specific modelParams from providerOptions.
+ * @param settingsModelParams - modelParams from provider settings.
+ * @internal
+ */
+function applyParameterOverrides(
+  modelParams: SAPModelParams,
+  options: Record<string, unknown>,
+  sapModelParams: Record<string, unknown> | undefined,
+  settingsModelParams: Record<string, unknown> | undefined,
+): void {
+  const params = modelParams as Record<string, unknown>;
+
+  for (const mapping of PARAM_MAPPINGS) {
+    const value =
+      (mapping.optionKey ? options[mapping.optionKey] : undefined) ??
+      (mapping.camelCaseKey ? sapModelParams?.[mapping.camelCaseKey] : undefined) ??
+      (mapping.camelCaseKey ? settingsModelParams?.[mapping.camelCaseKey] : undefined);
+
+    if (value !== undefined) {
+      params[mapping.outputKey] = value;
+    }
+
+    if (mapping.camelCaseKey && mapping.camelCaseKey !== mapping.outputKey) {
+      Reflect.deleteProperty(params, mapping.camelCaseKey);
+    }
   }
 }
 
