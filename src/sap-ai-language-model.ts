@@ -7,7 +7,6 @@ import type { DeploymentIdConfig, ResourceGroupConfig } from "@sap-ai-sdk/ai-api
 import type { LlmModelParams } from "@sap-ai-sdk/orchestration";
 import type { Template } from "@sap-ai-sdk/orchestration/dist/client/api/schema/template.js";
 import type { HttpDestinationOrFetchOptions } from "@sap-cloud-sdk/connectivity";
-import type { ZodType } from "zod";
 
 import {
   LanguageModelV3,
@@ -27,7 +26,7 @@ import {
   OrchestrationClient,
   OrchestrationModuleConfig,
 } from "@sap-ai-sdk/orchestration";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z, type ZodType } from "zod";
 
 import { deepMerge } from "./deep-merge.js";
 
@@ -691,9 +690,7 @@ export class SAPAILanguageModel implements LanguageModelV3 {
 
             if (toolWithParams.parameters && isZodSchema(toolWithParams.parameters)) {
               try {
-                const jsonSchema = zodToJsonSchema(toolWithParams.parameters as never, {
-                  $refStrategy: "none",
-                });
+                const jsonSchema = z.toJSONSchema(toolWithParams.parameters);
                 const schemaRecord = jsonSchema as Record<string, unknown>;
                 delete schemaRecord.$schema;
                 parameters = buildSAPToolParameters(schemaRecord);

@@ -74,8 +74,7 @@
     "@ai-sdk/provider": "^3.0.4",
     "@ai-sdk/provider-utils": "^4.0.8",
     "@sap-ai-sdk/orchestration": "^2.5.0",
-    "zod": "^4.3.5",
-    "zod-to-json-schema": "^3.25.1"
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",

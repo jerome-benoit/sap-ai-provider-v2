@@ -36,7 +36,6 @@ the familiar Vercel AI SDK interface.
 - **@ai-sdk/provider-utils** (^4.0.8) - Vercel AI SDK utilities
 - **@sap-ai-sdk/orchestration** (^2.5.0) - Official SAP AI SDK
 - **zod** (^4.3.5) - Schema validation
-- **zod-to-json-schema** (^3.25.1) - Tool schema conversion
 
 **Tooling:**
 
