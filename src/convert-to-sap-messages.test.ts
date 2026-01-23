@@ -334,10 +334,22 @@ describe("convertToSAPMessages", () => {
         },
       ];
       const result = convertToSAPMessages(prompt);
-      expect(result[0]).toMatchObject({
-        content: "Let me check.",
-        tool_calls: expect.any(Array) as unknown,
-      });
+      expect(result).toEqual([
+        {
+          content: "Let me check.",
+          role: "assistant",
+          tool_calls: [
+            {
+              function: {
+                arguments: '{"location":"Paris"}',
+                name: "get_weather",
+              },
+              id: "call_123",
+              type: "function",
+            },
+          ],
+        },
+      ]);
     });
 
     it("should handle special characters in input", () => {
@@ -513,9 +525,18 @@ describe("convertToSAPMessages", () => {
         },
       ];
       const result = convertToSAPMessages(prompt);
-      expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({ role: "tool", tool_call_id: "call_1" });
-      expect(result[1]).toMatchObject({ role: "tool", tool_call_id: "call_2" });
+      expect(result).toEqual([
+        {
+          content: '{"type":"json","value":{"weather":"sunny"}}',
+          role: "tool",
+          tool_call_id: "call_1",
+        },
+        {
+          content: '{"type":"json","value":{"time":"12:00"}}',
+          role: "tool",
+          tool_call_id: "call_2",
+        },
+      ]);
     });
 
     it("should handle empty tool content array", () => {

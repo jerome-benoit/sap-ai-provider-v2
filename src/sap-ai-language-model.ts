@@ -46,6 +46,7 @@ import {
   validateModelParamsWithWarnings,
 } from "./sap-ai-provider-options";
 import { SAPAIModelId, SAPAISettings } from "./sap-ai-settings";
+import { VERSION } from "./version.js";
 
 /**
  * Parameter mapping for AI SDK options → SAP model params.
@@ -258,6 +259,7 @@ export class SAPAILanguageModel implements LanguageModelV3 {
             ...(typeof responseHeaders?.["x-request-id"] === "string"
               ? { requestId: responseHeaders["x-request-id"] }
               : {}),
+            version: VERSION,
           },
         },
         request: {
@@ -566,6 +568,7 @@ export class SAPAILanguageModel implements LanguageModelV3 {
                 [providerName]: {
                   finishReason: streamState.finishReason.raw,
                   responseId,
+                  version: VERSION,
                 },
               },
               type: "finish",
