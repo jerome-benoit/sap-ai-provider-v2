@@ -340,7 +340,7 @@ You can control the verbosity:
 #### Option 1: Via provider configuration (recommended)
 
 ```typescript
-import { createSAPAIProvider } from "@mymediset/sap-ai-provider";
+import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
 
 const provider = createSAPAIProvider({
   logLevel: "warn", // 'error' | 'warn' | 'info' | 'debug' (default: 'warn')
@@ -386,7 +386,7 @@ Start simple, add features gradually:
 ```typescript
 import "dotenv/config"; // Load environment variables
 import { generateText } from "ai";
-import { createSAPAIProvider } from "@mymediset/sap-ai-provider";
+import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
 
 const provider = createSAPAIProvider();
 const result = await generateText({
@@ -418,7 +418,7 @@ If issues persist:
 2. **Review examples:** Compare your code with `examples/` directory
 
 3. **Open an issue:**
-   [GitHub Issues](https://github.com/BITASIA/sap-ai-provider/issues) - Include
+   [GitHub Issues](https://github.com/jerome-benoit/sap-ai-provider/issues) - Include
    error messages, code snippets (redact credentials)
 4. **SAP Support:** For SAP AI Core service issues -
    [SAP AI Core Docs](https://help.sap.com/docs/ai-core)

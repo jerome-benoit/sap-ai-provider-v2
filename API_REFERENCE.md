@@ -12,7 +12,7 @@ consistently:
 - **SAP AI SDK** - The official `@sap-ai-sdk/orchestration` npm package used for
   API communication
 - **SAP AI Core Provider** or **this provider** - This npm package
-  (`@mymediset/sap-ai-provider`)
+  (`@jerome-benoit/sap-ai-provider`)
 - **Tool calling** - The capability of models to invoke external functions
   (equivalent to "function calling")
 
@@ -117,7 +117,7 @@ function createSAPAIProvider(options?: SAPAIProviderSettings): SAPAIProvider;
 
 ```typescript
 import "dotenv/config"; // Load environment variables
-import { createSAPAIProvider } from "@mymediset/sap-ai-provider";
+import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
 
 const provider = createSAPAIProvider({
   resourceGroup: "default",
@@ -152,7 +152,7 @@ This is the quickest way to get started without explicit provider creation.
 
 ```typescript
 import "dotenv/config"; // Load environment variables
-import { sapai } from "@mymediset/sap-ai-provider";
+import { sapai } from "@jerome-benoit/sap-ai-provider";
 import { generateText } from "ai";
 import { APICallError } from "@ai-sdk/provider";
 
@@ -362,7 +362,7 @@ based on the conversation context. The provider handles:
 
 ```typescript
 import { generateText } from "ai";
-import { createSAPAIProvider } from "@mymediset/sap-ai-provider";
+import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
 import { z } from "zod";
 
 const provider = createSAPAIProvider();
@@ -636,7 +636,7 @@ Key features:
 
 ```typescript
 import "dotenv/config"; // Load environment variables
-import { createSAPAIProvider } from "@mymediset/sap-ai-provider";
+import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
 import { embed, embedMany } from "ai";
 
 const provider = createSAPAIProvider();
@@ -1004,7 +1004,7 @@ const settings: SAPAIProviderSettings = {
 **Example with provider name:**
 
 ```typescript
-import { createSAPAIProvider } from "@mymediset/sap-ai-provider";
+import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
 import { generateText } from "ai";
 
 // Create provider with name
@@ -1201,7 +1201,7 @@ The default provider name constant. Use as key in `providerOptions` and `provide
 **Usage:**
 
 ```typescript
-import { SAP_AI_PROVIDER_NAME } from "@mymediset/sap-ai-provider";
+import { SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai-provider";
 
 const result = await generateText({
   model: provider("gpt-4o"),
@@ -1237,7 +1237,7 @@ Zod schema for validating language model provider options.
 
 ```typescript
 import { generateText } from "ai";
-import { createSAPAIProvider } from "@mymediset/sap-ai-provider";
+import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
 
 const provider = createSAPAIProvider();
 
@@ -1273,7 +1273,7 @@ Zod schema for validating embedding model provider options.
 
 ```typescript
 import { embed } from "ai";
-import { createSAPAIProvider } from "@mymediset/sap-ai-provider";
+import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
 
 const provider = createSAPAIProvider();
 
@@ -1682,7 +1682,7 @@ function getProviderName(providerIdentifier: string): string;
 **Example:**
 
 ```typescript
-import { getProviderName } from "@mymediset/sap-ai-provider";
+import { getProviderName } from "@jerome-benoit/sap-ai-provider";
 
 getProviderName("sap-ai.chat"); // => "sap-ai"
 getProviderName("sap-ai-core.embedding"); // => "sap-ai-core"
@@ -1695,7 +1695,7 @@ This function is useful when working with dynamic provider names or when you
 need to access `providerMetadata` using the model's provider identifier:
 
 ```typescript
-import { createSAPAIProvider, getProviderName } from "@mymediset/sap-ai-provider";
+import { createSAPAIProvider, getProviderName } from "@jerome-benoit/sap-ai-provider";
 import { generateText } from "ai";
 
 const provider = createSAPAIProvider({ name: "my-sap" });
