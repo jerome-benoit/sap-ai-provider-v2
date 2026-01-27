@@ -859,7 +859,7 @@ describe("convertToSAPMessages", () => {
         // No {{ in JSON, so nothing should be escaped
         expect(result).toBe(input);
         // JSON should remain valid
-        expect(() => JSON.parse(result)).not.toThrow();
+        expect(() => JSON.parse(result) as unknown).not.toThrow();
       });
     });
 
@@ -932,7 +932,7 @@ describe("convertToSAPMessages", () => {
               {
                 output: {
                   type: "json" as const,
-                  value: { template: "{{?question}}", syntax: "Use {{variable}}" },
+                  value: { syntax: "Use {{variable}}", template: "{{?question}}" },
                 },
                 toolCallId: "call_123",
                 toolName: "get_schema",
@@ -946,7 +946,7 @@ describe("convertToSAPMessages", () => {
         const content = (result[0] as { content: string }).content;
         expect(content).not.toContain("{{");
         // Verify it's still valid JSON
-        expect(() => JSON.parse(content)).not.toThrow();
+        expect(() => JSON.parse(content) as unknown).not.toThrow();
       });
 
       it("should escape tool call arguments when enabled", () => {
@@ -968,7 +968,7 @@ describe("convertToSAPMessages", () => {
         const args = message.tool_calls[0]?.function.arguments ?? "";
         expect(args).not.toContain("{{");
         // JSON structure (with }}) should still be valid
-        expect(() => JSON.parse(args)).not.toThrow();
+        expect(() => JSON.parse(args) as unknown).not.toThrow();
       });
 
       it("should escape reasoning content when both options enabled", () => {
@@ -1032,7 +1032,7 @@ describe("convertToSAPMessages", () => {
         expect(content).not.toContain("{{");
 
         // Verify it's still valid JSON that can be parsed
-        expect(() => JSON.parse(content)).not.toThrow();
+        expect(() => JSON.parse(content) as unknown).not.toThrow();
       });
 
       it("should not modify multi-modal content parts (images)", () => {

@@ -6,6 +6,14 @@
  */
 
 /**
+ * Utility functions for escaping `{{` patterns in orchestration content.
+ */
+export {
+  escapeOrchestrationPlaceholders,
+  unescapeOrchestrationPlaceholders,
+} from "./convert-to-sap-messages.js";
+
+/**
  * Embedding model class for generating vector embeddings via SAP AI Core.
  */
 export { SAPAIEmbeddingModel } from "./sap-ai-embedding-model.js";
@@ -93,14 +101,6 @@ export {
   buildLlamaGuard38BFilter,
   buildTranslationConfig,
 } from "./sap-ai-settings.js";
-
-/**
- * Utility functions for escaping `{{` patterns in orchestration content.
- */
-export {
-  escapeOrchestrationPlaceholders,
-  unescapeOrchestrationPlaceholders,
-} from "./convert-to-sap-messages.js";
 
 /**
  * Response classes from the SAP AI SDK for orchestration results.

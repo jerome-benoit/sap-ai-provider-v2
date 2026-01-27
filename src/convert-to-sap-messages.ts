@@ -24,39 +24,6 @@ import { Buffer } from "node:buffer";
  * @see {@link https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/orchestration SAP AI Core Orchestration}
  */
 
-/** Zero-width space used to break `{{` patterns in orchestration placeholders. @internal */
-const ZERO_WIDTH_SPACE = "\u200B";
-
-/** Regex for matching `{{` placeholder opening syntax. @internal */
-const PLACEHOLDER_OPEN_PATTERN = /\{\{/g;
-
-/**
- * Escapes `{{` patterns by inserting zero-width spaces to prevent SAP orchestration template conflicts.
- * @param text - The text content to escape.
- * @returns Text with `{{` replaced by `{\u200B{`.
- */
-export function escapeOrchestrationPlaceholders(text: string): string {
-  if (!text) return text;
-  // Loop to handle overlapping patterns like {{{
-  let result = text;
-  let previous: string;
-  do {
-    previous = result;
-    result = result.replace(PLACEHOLDER_OPEN_PATTERN, `{${ZERO_WIDTH_SPACE}{`);
-  } while (result !== previous);
-  return result;
-}
-
-/**
- * Reverses escaping by removing zero-width spaces from `{{` patterns.
- * @param text - The escaped text content.
- * @returns Original text with `{{` restored.
- */
-export function unescapeOrchestrationPlaceholders(text: string): string {
-  if (!text) return text;
-  return text.replace(new RegExp(`\\{${ZERO_WIDTH_SPACE}\\{`, "g"), "{{");
-}
-
 /** Options for converting Vercel AI SDK prompts to SAP AI SDK messages. */
 export interface ConvertToSAPMessagesOptions {
   /**
@@ -71,6 +38,18 @@ export interface ConvertToSAPMessagesOptions {
    */
   readonly includeReasoning?: boolean;
 }
+
+/**
+ * Zero-width space used to break `{{` patterns in orchestration placeholders.
+ * @internal
+ */
+const ZERO_WIDTH_SPACE = "\u200B";
+
+/**
+ * Regex for matching `{{` placeholder opening syntax.
+ * @internal
+ */
+const PLACEHOLDER_OPEN_PATTERN = /\{\{/g;
 
 /**
  * Multi-modal content item for user messages.
@@ -309,4 +288,31 @@ export function convertToSAPMessages(
   }
 
   return messages;
+}
+
+/**
+ * Escapes `{{` patterns by inserting zero-width spaces to prevent SAP orchestration template conflicts.
+ * @param text - The text content to escape.
+ * @returns Text with `{{` replaced by `{\u200B{`.
+ */
+export function escapeOrchestrationPlaceholders(text: string): string {
+  if (!text) return text;
+  // Loop to handle overlapping patterns like {{{
+  let result = text;
+  let previous: string;
+  do {
+    previous = result;
+    result = result.replace(PLACEHOLDER_OPEN_PATTERN, `{${ZERO_WIDTH_SPACE}{`);
+  } while (result !== previous);
+  return result;
+}
+
+/**
+ * Reverses escaping by removing zero-width spaces from `{{` patterns.
+ * @param text - The escaped text content.
+ * @returns Original text with `{{` restored.
+ */
+export function unescapeOrchestrationPlaceholders(text: string): string {
+  if (!text) return text;
+  return text.replace(new RegExp(`\\{${ZERO_WIDTH_SPACE}\\{`, "g"), "{{");
 }
