@@ -1040,16 +1040,16 @@ Model-specific configuration options.
 
 **Properties:**
 
-| Property                     | Type                   | Default    | Description                                                                                            |
-| ---------------------------- | ---------------------- | ---------- | ------------------------------------------------------------------------------------------------------ |
-| `modelVersion`               | `string`               | `'latest'` | Specific model version                                                                                 |
-| `includeReasoning`           | `boolean`              | -          | Whether to include assistant reasoning parts in SAP prompt conversion (may contain internal reasoning) |
-| `escapeTemplatePlaceholders` | `boolean`              | `false`    | Escape `{{` patterns in message content to prevent conflicts with SAP orchestration templating         |
-| `modelParams`                | `ModelParams`          | -          | Model generation parameters                                                                            |
-| `masking`                    | `MaskingModule`        | -          | Data masking configuration (DPI)                                                                       |
-| `filtering`                  | `FilteringModule`      | -          | Content filtering configuration                                                                        |
-| `responseFormat`             | `ResponseFormatConfig` | -          | Response format specification                                                                          |
-| `tools`                      | `ChatCompletionTool[]` | -          | Tool definitions in SAP AI SDK format                                                                  |
+| Property                     | Type                   | Default    | Description                                                                                                           |
+| ---------------------------- | ---------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| `modelVersion`               | `string`               | `'latest'` | Specific model version                                                                                                |
+| `includeReasoning`           | `boolean`              | -          | Whether to include assistant reasoning parts in SAP prompt conversion (may contain internal reasoning)                |
+| `escapeTemplatePlaceholders` | `boolean`              | `false`    | Escape Jinja2 delimiters (`{{`, `{%`, `{#`) in message content to prevent conflicts with SAP orchestration templating |
+| `modelParams`                | `ModelParams`          | -          | Model generation parameters                                                                                           |
+| `masking`                    | `MaskingModule`        | -          | Data masking configuration (DPI)                                                                                      |
+| `filtering`                  | `FilteringModule`      | -          | Content filtering configuration                                                                                       |
+| `responseFormat`             | `ResponseFormatConfig` | -          | Response format specification                                                                                         |
+| `tools`                      | `ChatCompletionTool[]` | -          | Tool definitions in SAP AI SDK format                                                                                 |
 
 **Example:**
 
@@ -1081,7 +1081,7 @@ const settings: SAPAISettings = {
 };
 ```
 
-> **Note:** Enable `escapeTemplatePlaceholders` when using AI coding agents (OpenCode, Cursor, Cline) or tools that return content containing Mustache-like placeholder syntax (`{{variable}}`). SAP AI Core's orchestration API uses this syntax for templating and will fail with "Unused parameters" errors if the patterns appear in message content. See [Troubleshooting - Template Placeholder Conflicts](./TROUBLESHOOTING.md#template-placeholder-conflicts) for details.
+> **Note:** Enable `escapeTemplatePlaceholders` when using AI coding agents (OpenCode, Cursor, Cline) or tools that return content containing Jinja2 template syntax (`{{variable}}`, `{% if %}`, `{# comment #}`). SAP AI Core's orchestration API uses this syntax for templating and will fail with "Unused parameters" errors if the patterns appear in message content. See [Troubleshooting - Template Placeholder Conflicts](./TROUBLESHOOTING.md#template-placeholder-conflicts) for details.
 
 ---
 

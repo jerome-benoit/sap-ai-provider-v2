@@ -175,10 +175,10 @@ request, incompatible features
 - "Unused parameters: ['variable']"
 - Template parsing errors when using AI coding agents
 
-**Cause:** SAP AI Core's orchestration API uses Mustache-like placeholder syntax
-(`{{variable}}` and `{{?variable}}`) for prompt templating. When tool results or
+**Cause:** SAP AI Core's orchestration API uses Jinja2 templating syntax
+(`{{variable}}`, `{{?variable}}`, `{% if %}`, `{# comment #}`) for prompt templating. When tool results or
 message content from AI coding agents (OpenCode, Cursor, Cline, etc.) contains
-these patterns, the API incorrectly interprets them as template placeholders.
+these patterns, the API incorrectly interprets them as template directives.
 
 **Solution:**
 
@@ -212,9 +212,10 @@ const result = await generateText({
 
 **How it works:**
 
-The option inserts a zero-width space (U+200B) between double braces (`{{`
-becomes `{\u200B{`), breaking the pattern while keeping content visually
-unchanged. JSON structures with `}}` (closing braces) are preserved.
+The option inserts a zero-width space (U+200B) between Jinja2 opening delimiters
+(`{{` becomes `{\u200B{`, `{%` becomes `{\u200B%`, `{#` becomes `{\u200B#`),
+breaking the pattern while keeping content visually unchanged. JSON structures
+with `}}` (closing braces) are preserved.
 
 **Manual escaping utilities:**
 

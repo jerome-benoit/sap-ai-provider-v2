@@ -861,6 +861,48 @@ describe("convertToSAPMessages", () => {
         // JSON should remain valid
         expect(() => JSON.parse(result) as unknown).not.toThrow();
       });
+
+      it("should escape Jinja2 block statements ({%)", () => {
+        const input = "{% for item in items %}{{ item }}{% endfor %}";
+        const result = escapeOrchestrationPlaceholders(input);
+        expect(result).toBe(
+          `{${ZERO_WIDTH_SPACE}% for item in items %}{${ZERO_WIDTH_SPACE}{ item }}{${ZERO_WIDTH_SPACE}% endfor %}`,
+        );
+        expect(result).not.toContain("{%");
+        expect(result).not.toContain("{{");
+      });
+
+      it("should escape Jinja2 comments ({#)", () => {
+        const input = "{# This is a Jinja2 comment #}";
+        const result = escapeOrchestrationPlaceholders(input);
+        expect(result).toBe(`{${ZERO_WIDTH_SPACE}# This is a Jinja2 comment #}`);
+        expect(result).not.toContain("{#");
+      });
+
+      it("should escape all Jinja2 delimiters in mixed content", () => {
+        const input = "{{ var }} {% if cond %} {# comment #}";
+        const result = escapeOrchestrationPlaceholders(input);
+        expect(result).not.toContain("{{");
+        expect(result).not.toContain("{%");
+        expect(result).not.toContain("{#");
+        // 3 delimiters escaped = 3 zero-width spaces
+        expect(result.match(new RegExp(ZERO_WIDTH_SPACE, "g"))).toHaveLength(3);
+      });
+
+      it("should handle edge case: {{{ (triple brace)", () => {
+        const input = "{{{nested}}}";
+        const result = escapeOrchestrationPlaceholders(input);
+        // First {{ is escaped, remaining { is just a brace
+        expect(result).toBe(`{${ZERO_WIDTH_SPACE}{${ZERO_WIDTH_SPACE}{nested}}}`);
+      });
+
+      it("should handle edge case: {{%", () => {
+        const input = "{{%mixed";
+        const result = escapeOrchestrationPlaceholders(input);
+        // Both {{ and {% delimiters overlap - the loop escapes {{ first,
+        // then the remaining {% is also escaped
+        expect(result).toBe(`{${ZERO_WIDTH_SPACE}{${ZERO_WIDTH_SPACE}%mixed`);
+      });
     });
 
     describe("unescapeOrchestrationPlaceholders", () => {
@@ -885,6 +927,27 @@ describe("convertToSAPMessages", () => {
 
       it("should handle empty string", () => {
         expect(unescapeOrchestrationPlaceholders("")).toBe("");
+      });
+
+      it("should restore Jinja2 block statements ({%)", () => {
+        const original = "{% for item in items %}{% endfor %}";
+        const escaped = escapeOrchestrationPlaceholders(original);
+        const restored = unescapeOrchestrationPlaceholders(escaped);
+        expect(restored).toBe(original);
+      });
+
+      it("should restore Jinja2 comments ({#)", () => {
+        const original = "{# comment #}";
+        const escaped = escapeOrchestrationPlaceholders(original);
+        const restored = unescapeOrchestrationPlaceholders(escaped);
+        expect(restored).toBe(original);
+      });
+
+      it("should restore all Jinja2 delimiters in mixed content", () => {
+        const original = "{{ var }} {% if x %} {# note #}";
+        const escaped = escapeOrchestrationPlaceholders(original);
+        const restored = unescapeOrchestrationPlaceholders(escaped);
+        expect(restored).toBe(original);
       });
     });
 
