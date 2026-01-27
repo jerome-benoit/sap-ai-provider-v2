@@ -1040,15 +1040,16 @@ Model-specific configuration options.
 
 **Properties:**
 
-| Property           | Type                   | Default    | Description                                                                                            |
-| ------------------ | ---------------------- | ---------- | ------------------------------------------------------------------------------------------------------ |
-| `modelVersion`     | `string`               | `'latest'` | Specific model version                                                                                 |
-| `includeReasoning` | `boolean`              | -          | Whether to include assistant reasoning parts in SAP prompt conversion (may contain internal reasoning) |
-| `modelParams`      | `ModelParams`          | -          | Model generation parameters                                                                            |
-| `masking`          | `MaskingModule`        | -          | Data masking configuration (DPI)                                                                       |
-| `filtering`        | `FilteringModule`      | -          | Content filtering configuration                                                                        |
-| `responseFormat`   | `ResponseFormatConfig` | -          | Response format specification                                                                          |
-| `tools`            | `ChatCompletionTool[]` | -          | Tool definitions in SAP AI SDK format                                                                  |
+| Property                     | Type                   | Default    | Description                                                                                                             |
+| ---------------------------- | ---------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `modelVersion`               | `string`               | `'latest'` | Specific model version                                                                                                  |
+| `includeReasoning`           | `boolean`              | -          | Whether to include assistant reasoning parts in SAP prompt conversion (may contain internal reasoning)                  |
+| `escapeTemplatePlaceholders` | `boolean`              | `true`     | Escape template delimiters (`{{`, `{%`, `{#`) in message content to prevent conflicts with SAP orchestration templating |
+| `modelParams`                | `ModelParams`          | -          | Model generation parameters                                                                                             |
+| `masking`                    | `MaskingModule`        | -          | Data masking configuration (DPI)                                                                                        |
+| `filtering`                  | `FilteringModule`      | -          | Content filtering configuration                                                                                         |
+| `responseFormat`             | `ResponseFormatConfig` | -          | Response format specification                                                                                           |
+| `tools`                      | `ChatCompletionTool[]` | -          | Tool definitions in SAP AI SDK format                                                                                   |
 
 **Example:**
 
@@ -1078,6 +1079,8 @@ const settings: SAPAISettings = {
   ],
 };
 ```
+
+> **Note:** The `escapeTemplatePlaceholders` option is enabled by default to prevent SAP AI Core orchestration API errors when content contains template syntax (`{{variable}}`, `{% if %}`, `{# comment #}`). Set to `false` only if you intentionally use SAP orchestration templating features. See [Troubleshooting - Problem: Template Placeholder Conflicts](./TROUBLESHOOTING.md#problem-template-placeholder-conflicts) for details.
 
 ---
 

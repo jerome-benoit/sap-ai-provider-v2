@@ -6,6 +6,14 @@
  */
 
 /**
+ * Utility functions for escaping template delimiters (`{{`, `{%`, `{#`) in orchestration content.
+ */
+export {
+  escapeOrchestrationPlaceholders,
+  unescapeOrchestrationPlaceholders,
+} from "./convert-to-sap-messages.js";
+
+/**
  * Embedding model class for generating vector embeddings via SAP AI Core.
  */
 export { SAPAIEmbeddingModel } from "./sap-ai-embedding-model.js";
