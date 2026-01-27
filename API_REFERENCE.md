@@ -1080,7 +1080,7 @@ const settings: SAPAISettings = {
 };
 ```
 
-> **Note:** The `escapeTemplatePlaceholders` option is enabled by default to prevent SAP AI Core orchestration API errors when content contains template syntax (`{{variable}}`, `{% if %}`, `{# comment #}`). Set to `false` only if you intentionally use SAP orchestration templating features. See [Troubleshooting - Template Placeholder Conflicts](./TROUBLESHOOTING.md#template-placeholder-conflicts) for details.
+> **Note:** The `escapeTemplatePlaceholders` option is enabled by default to prevent SAP AI Core orchestration API errors when content contains template syntax (`{{variable}}`, `{% if %}`, `{# comment #}`). Set to `false` only if you intentionally use SAP orchestration templating features. See [Troubleshooting - Problem: Template Placeholder Conflicts](./TROUBLESHOOTING.md#problem-template-placeholder-conflicts) for details.
 
 ---
 

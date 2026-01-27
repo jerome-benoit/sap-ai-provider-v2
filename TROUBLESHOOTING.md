@@ -5,18 +5,18 @@ Provider.
 
 ## Quick Reference
 
-| Issue                 | Section                                                               |
-| --------------------- | --------------------------------------------------------------------- |
-| 401 Unauthorized      | [Authentication Issues](#problem-authentication-failed-or-401-errors) |
-| 403 Forbidden         | [Authentication Issues](#problem-403-forbidden)                       |
-| 404 Not Found         | [Model and Deployment Issues](#problem-404-modeldeployment-not-found) |
-| 400 Bad Request       | [API Errors](#problem-400-bad-request)                                |
-| 400 Template errors   | [Template Placeholder Conflicts](#template-placeholder-conflicts)     |
-| 429 Rate Limit        | [API Errors](#problem-429-rate-limit-exceeded)                        |
-| 500-504 Server Errors | [API Errors](#problem-500502503504-server-errors)                     |
-| Tools not called      | [Tool Calling Issues](#problem-tools-not-being-called)                |
-| Stream issues         | [Streaming Issues](#problem-streaming-not-working-or-incomplete)      |
-| Slow responses        | [Performance Issues](#problem-slow-response-times)                    |
+| Issue                 | Section                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| 401 Unauthorized      | [Authentication Issues](#problem-authentication-failed-or-401-errors)              |
+| 403 Forbidden         | [Authentication Issues](#problem-403-forbidden)                                    |
+| 404 Not Found         | [Model and Deployment Issues](#problem-404-modeldeployment-not-found)              |
+| 400 Bad Request       | [API Errors](#problem-400-bad-request)                                             |
+| 400 Template errors   | [Problem: Template Placeholder Conflicts](#problem-template-placeholder-conflicts) |
+| 429 Rate Limit        | [API Errors](#problem-429-rate-limit-exceeded)                                     |
+| 500-504 Server Errors | [API Errors](#problem-500502503504-server-errors)                                  |
+| Tools not called      | [Tool Calling Issues](#problem-tools-not-being-called)                             |
+| Stream issues         | [Streaming Issues](#problem-streaming-not-working-or-incomplete)                   |
+| Slow responses        | [Performance Issues](#problem-slow-response-times)                                 |
 
 ## Common Problems (Top 5)
 
@@ -61,7 +61,7 @@ below.
 - [API Errors](#api-errors)
   - [Parsing SAP Error Metadata (v3.0.0+)](#parsing-sap-error-metadata-v300)
   - [Problem: 400 Bad Request](#problem-400-bad-request)
-  - [Template Placeholder Conflicts](#template-placeholder-conflicts)
+  - [Problem: Template Placeholder Conflicts](#problem-template-placeholder-conflicts)
   - [Problem: 429 Rate Limit Exceeded](#problem-429-rate-limit-exceeded)
   - [Problem: 500/502/503/504 Server Errors](#problem-500502503504-server-errors)
 - [Model and Deployment Issues](#model-and-deployment-issues)
@@ -167,7 +167,7 @@ request, incompatible features
 - Check API Reference for valid parameter ranges
 - Enable verbose logging to see exact request
 
-### Template Placeholder Conflicts
+### Problem: Template Placeholder Conflicts
 
 **Symptoms:** HTTP 400 with error messages like:
 
@@ -176,12 +176,11 @@ request, incompatible features
 
 **Cause:** SAP AI Core's orchestration API uses template syntax
 (`{{variable}}`, `{{?variable}}`, `{% if %}`, `{# comment #}`) for prompt templating. When tool results or
-message content from AI coding agents (OpenCode, Cursor, Cline, etc.) contains
-these patterns, the API incorrectly interprets them as template directives.
+message content contains these patterns, the API incorrectly interprets them as template directives.
 
-**Solution:**
+**Solutions:**
 
-The `escapeTemplatePlaceholders` option is **enabled by default** since v4.2.8,
+The `escapeTemplatePlaceholders` option is **enabled by default**,
 which should prevent this issue. If you still encounter it, verify that you
 haven't explicitly disabled escaping:
 
