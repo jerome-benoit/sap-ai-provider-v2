@@ -127,7 +127,7 @@ try {
 
 ## Installation
 
-(??)**Requirements:** Node.js 18+ and Vercel AI SDK 6.0+
+**Requirements:** Node.js 18+ and Vercel AI SDK 5.0+ or 6.0+
 
 ```bash
 npm install @jerome-benoit/sap-ai-provider ai
