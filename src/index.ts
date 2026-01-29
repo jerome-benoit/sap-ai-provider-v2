@@ -26,16 +26,16 @@ export type { SAPAIEmbeddingModelId, SAPAIEmbeddingSettings } from "./sap-ai-emb
 export type { OrchestrationErrorResponse } from "./sap-ai-error.js";
 
 /**
- * Language model class for chat/text completions via SAP AI Core.
- */
-export { SAPAILanguageModelV2 as SAPAILanguageModel } from "./sap-ai-language-model-v2.js";
-
-/**
  * Custom error classes for Foundation Models API support.
  * - `UnsupportedFeatureError`: Thrown when a feature is used with an incompatible API.
  * - `ApiSwitchError`: Thrown when attempting to switch APIs at invocation time with conflicting settings.
  */
 export { ApiSwitchError, UnsupportedFeatureError } from "./sap-ai-error.js";
+
+/**
+ * Language model class for chat/text completions via SAP AI Core.
+ */
+export { SAPAILanguageModelV2 as SAPAILanguageModel } from "./sap-ai-language-model-v2.js";
 
 /**
  * Provider options for per-call configuration.
