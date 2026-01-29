@@ -16,6 +16,7 @@ import type { DeploymentIdConfig, ResourceGroupConfig } from "@sap-ai-sdk/ai-api
 import type { HttpDestinationOrFetchOptions } from "@sap-cloud-sdk/connectivity";
 
 import type { SAPAIEmbeddingSettings } from "./sap-ai-embedding-model.js";
+import type { SAPAIApiType } from "./sap-ai-settings.js";
 
 import { convertWarningsV3ToV2 } from "./sap-ai-adapters-v3-to-v2.js";
 import { SAPAIEmbeddingModel } from "./sap-ai-embedding-model.js";
@@ -28,6 +29,8 @@ interface SAPAIEmbeddingModelV2Config {
   readonly deploymentConfig: DeploymentIdConfig | ResourceGroupConfig;
   readonly destination?: HttpDestinationOrFetchOptions;
   readonly provider: string;
+  /** Provider-level API setting for fallback during API resolution. */
+  readonly providerApi?: SAPAIApiType;
 }
 
 /**
