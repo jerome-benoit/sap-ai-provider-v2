@@ -19,6 +19,8 @@ import type {
 import type { DeploymentIdConfig, ResourceGroupConfig } from "@sap-ai-sdk/ai-api/internal.js";
 import type { HttpDestinationOrFetchOptions } from "@sap-cloud-sdk/connectivity";
 
+import type { SAPAIApiType, SAPAIModelId, SAPAISettings } from "./sap-ai-settings.js";
+
 import {
   convertFinishReasonV3ToV2,
   convertStreamV3ToV2,
@@ -26,7 +28,6 @@ import {
   convertWarningsV3ToV2,
 } from "./sap-ai-adapters-v3-to-v2.js";
 import { SAPAILanguageModel as SAPAILanguageModelV3Internal } from "./sap-ai-language-model.js";
-import { SAPAIModelId, SAPAISettings } from "./sap-ai-settings.js";
 
 /**
  * Internal configuration for SAP AI Language Model V2.
@@ -36,6 +37,8 @@ interface SAPAILanguageModelV2Config {
   readonly deploymentConfig: DeploymentIdConfig | ResourceGroupConfig;
   readonly destination?: HttpDestinationOrFetchOptions;
   readonly provider: string;
+  /** Provider-level API setting for fallback during API resolution. */
+  readonly providerApi?: SAPAIApiType;
 }
 
 /**
