@@ -1,6 +1,6 @@
 # SAP AI Core Provider for Vercel AI SDK
 
-[![npm](https://img.shields.io/npm/v/@jerome-benoit/sap-ai-provider/latest?label=npm&color=blue)](https://www.npmjs.com/package/@jerome-benoit/sap-ai-provider)
+[![npm](https://img.shields.io/npm/v/@jerome-benoit/sap-ai-provider-v2/latest?label=npm&color=blue)](https://www.npmjs.com/package/@jerome-benoit/sap-ai-provider-v2)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Vercel AI SDK](https://img.shields.io/badge/Vercel%20AI%20SDK-5.0+-black.svg)](https://sdk.vercel.ai/docs)
 [![Language Model](https://img.shields.io/badge/Language%20Model-V2-orange.svg)](https://sdk.vercel.ai/docs/ai-sdk-core/provider-management)
