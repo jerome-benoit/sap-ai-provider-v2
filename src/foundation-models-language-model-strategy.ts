@@ -6,9 +6,7 @@
  */
 import type {
   LanguageModelV3CallOptions,
-  LanguageModelV3Content,
   LanguageModelV3GenerateResult,
-  LanguageModelV3StreamPart,
   LanguageModelV3StreamResult,
   SharedV3Warning,
 } from "@ai-sdk/provider";
@@ -33,13 +31,15 @@ import {
 } from "./sap-ai-provider-options.js";
 import {
   applyParameterOverrides,
+  buildGenerateResult,
   buildModelDeployment,
   createAISDKRequestBodySummary,
-  createInitialStreamState,
+  createStreamTransformer,
   extractToolParameters,
-  mapFinishReason,
   mapToolChoice,
   type ParamMapping,
+  type SDKResponse,
+  type SDKStreamChunk,
   StreamIdGenerator,
 } from "./strategy-utils.js";
 import { VERSION } from "./version.js";
@@ -117,81 +117,16 @@ export class FoundationModelsLanguageModelStrategy implements LanguageModelAPISt
         request,
         options.abortSignal ? { signal: options.abortSignal } : undefined,
       );
-      const responseHeaders = normalizeHeaders(response.rawResponse.headers);
 
-      const content: LanguageModelV3Content[] = [];
-
-      const textContent = response.getContent();
-      if (textContent) {
-        content.push({
-          text: textContent,
-          type: "text",
-        });
-      }
-
-      const toolCalls = response.getToolCalls();
-      if (toolCalls) {
-        for (const toolCall of toolCalls) {
-          content.push({
-            input: toolCall.function.arguments,
-            toolCallId: toolCall.id,
-            toolName: toolCall.function.name,
-            type: "tool-call",
-          });
-        }
-      }
-
-      const tokenUsage = response.getTokenUsage();
-
-      const finishReasonRaw = response.getFinishReason();
-      const finishReason = mapFinishReason(finishReasonRaw);
-
-      const rawResponseBody = {
-        content: textContent,
-        finishReason: finishReasonRaw,
-        tokenUsage,
-        toolCalls,
-      };
-
-      const providerName = getProviderName(config.provider);
-
-      return {
-        content,
-        finishReason,
-        providerMetadata: {
-          [providerName]: {
-            finishReason: finishReasonRaw ?? "unknown",
-            finishReasonMapped: finishReason,
-            ...(typeof responseHeaders?.["x-request-id"] === "string"
-              ? { requestId: responseHeaders["x-request-id"] }
-              : {}),
-            version: VERSION,
-          },
-        },
-        request: {
-          body: request as unknown,
-        },
-        response: {
-          body: rawResponseBody,
-          headers: responseHeaders,
-          modelId: config.modelId,
-          timestamp: new Date(),
-        },
-        usage: {
-          inputTokens: {
-            cacheRead: undefined,
-            cacheWrite: undefined,
-            noCache: tokenUsage?.prompt_tokens,
-            total: tokenUsage?.prompt_tokens,
-          },
-          outputTokens: {
-            reasoning: undefined,
-            text: tokenUsage?.completion_tokens,
-            total: tokenUsage?.completion_tokens,
-          },
-        },
+      return buildGenerateResult({
+        modelId: config.modelId,
+        providerName: getProviderName(config.provider),
+        requestBody: request,
+        response: response as SDKResponse,
+        responseHeaders: normalizeHeaders(response.rawResponse.headers),
+        version: VERSION,
         warnings,
-      };
+      });
     } catch (error) {
       throw convertToAISDKError(error, {
         operation: "doGenerate",
@@ -225,255 +160,22 @@ export class FoundationModelsLanguageModelStrategy implements LanguageModelAPISt
       const streamResponse = await client.stream(request, options.abortSignal);
 
       const idGenerator = new StreamIdGenerator();
-
-      // Client-generated UUID; TODO: use backend x-request-id when SDK exposes rawResponse
       const responseId = idGenerator.generateResponseId();
 
-      let textBlockId: null | string = null;
-
-      const streamState = createInitialStreamState();
-
-      const toolCallsInProgress = new Map<
-        number,
-        {
-          arguments: string;
-          didEmitCall: boolean;
-          didEmitInputStart: boolean;
-          id: string;
-          toolName?: string;
-        }
-      >();
-
-      const sdkStream = streamResponse.stream;
-      const modelId = config.modelId;
-      const providerName = getProviderName(config.provider);
-
-      const warningsSnapshot = [...warnings];
-
-      const transformedStream = new ReadableStream<LanguageModelV3StreamPart>({
-        cancel() {
-          // No cleanup needed - SDK handles stream cancellation internally
-        },
-        async start(controller) {
-          controller.enqueue({
-            type: "stream-start",
-            warnings: warningsSnapshot,
-          });
-
-          try {
-            for await (const chunk of sdkStream) {
-              if (options.includeRawChunks) {
-                controller.enqueue({
-                  rawValue: (chunk as { _data?: unknown })._data ?? chunk,
-                  type: "raw",
-                });
-              }
-
-              if (streamState.isFirstChunk) {
-                streamState.isFirstChunk = false;
-                controller.enqueue({
-                  id: responseId,
-                  modelId,
-                  timestamp: new Date(),
-                  type: "response-metadata",
-                });
-              }
-
-              const deltaToolCalls = chunk.getDeltaToolCalls();
-              if (Array.isArray(deltaToolCalls) && deltaToolCalls.length > 0) {
-                streamState.finishReason = {
-                  raw: undefined,
-                  unified: "tool-calls",
-                };
-              }
-
-              const deltaContent = chunk.getDeltaContent();
-              if (
-                typeof deltaContent === "string" &&
-                deltaContent.length > 0 &&
-                streamState.finishReason.unified !== "tool-calls"
-              ) {
-                if (!streamState.activeText) {
-                  textBlockId = idGenerator.generateTextBlockId();
-                  controller.enqueue({ id: textBlockId, type: "text-start" });
-                  streamState.activeText = true;
-                }
-                if (textBlockId) {
-                  controller.enqueue({
-                    delta: deltaContent,
-                    id: textBlockId,
-                    type: "text-delta",
-                  });
-                }
-              }
-
-              if (Array.isArray(deltaToolCalls) && deltaToolCalls.length > 0) {
-                for (const toolCallChunk of deltaToolCalls) {
-                  const index = toolCallChunk.index;
-                  if (typeof index !== "number" || !Number.isFinite(index)) {
-                    continue;
-                  }
-
-                  if (!toolCallsInProgress.has(index)) {
-                    toolCallsInProgress.set(index, {
-                      arguments: "",
-                      didEmitCall: false,
-                      didEmitInputStart: false,
-                      id: toolCallChunk.id ?? `tool_${String(index)}`,
-                      toolName: toolCallChunk.function?.name,
-                    });
-                  }
-
-                  const tc = toolCallsInProgress.get(index);
-                  if (!tc) continue;
-
-                  if (toolCallChunk.id) {
-                    tc.id = toolCallChunk.id;
-                  }
-
-                  const nextToolName = toolCallChunk.function?.name;
-                  if (typeof nextToolName === "string" && nextToolName.length > 0) {
-                    tc.toolName = nextToolName;
-                  }
-
-                  if (!tc.didEmitInputStart && tc.toolName) {
-                    tc.didEmitInputStart = true;
-                    controller.enqueue({
-                      id: tc.id,
-                      toolName: tc.toolName,
-                      type: "tool-input-start",
-                    });
-                  }
-
-                  const argumentsDelta = toolCallChunk.function?.arguments;
-                  if (typeof argumentsDelta === "string" && argumentsDelta.length > 0) {
-                    tc.arguments += argumentsDelta;
-
-                    if (tc.didEmitInputStart) {
-                      controller.enqueue({
-                        delta: argumentsDelta,
-                        id: tc.id,
-                        type: "tool-input-delta",
-                      });
-                    }
-                  }
-                }
-              }
-
-              const chunkFinishReason = chunk.getFinishReason();
-              if (chunkFinishReason) {
-                streamState.finishReason = mapFinishReason(chunkFinishReason);
-
-                if (streamState.finishReason.unified === "tool-calls") {
-                  const toolCalls = Array.from(toolCallsInProgress.values());
-                  for (const tc of toolCalls) {
-                    if (tc.didEmitCall) {
-                      continue;
-                    }
-                    if (!tc.didEmitInputStart) {
-                      tc.didEmitInputStart = true;
-                      controller.enqueue({
-                        id: tc.id,
-                        toolName: tc.toolName ?? "",
-                        type: "tool-input-start",
-                      });
-                    }
-
-                    tc.didEmitCall = true;
-                    controller.enqueue({ id: tc.id, type: "tool-input-end" });
-                    controller.enqueue({
-                      input: tc.arguments,
-                      toolCallId: tc.id,
-                      toolName: tc.toolName ?? "",
-                      type: "tool-call",
-                    });
-                  }
-
-                  if (streamState.activeText && textBlockId) {
-                    controller.enqueue({ id: textBlockId, type: "text-end" });
-                    streamState.activeText = false;
-                  }
-                }
-              }
-            }
-
-            const toolCalls = Array.from(toolCallsInProgress.values());
-            let didEmitAnyToolCalls = false;
-
-            for (const tc of toolCalls) {
-              if (tc.didEmitCall) {
-                continue;
-              }
-
-              if (!tc.didEmitInputStart) {
-                tc.didEmitInputStart = true;
-                controller.enqueue({
-                  id: tc.id,
-                  toolName: tc.toolName ?? "",
-                  type: "tool-input-start",
-                });
-              }
-
-              didEmitAnyToolCalls = true;
-              tc.didEmitCall = true;
-              controller.enqueue({ id: tc.id, type: "tool-input-end" });
-              controller.enqueue({
-                input: tc.arguments,
-                toolCallId: tc.id,
-                toolName: tc.toolName ?? "",
-                type: "tool-call",
-              });
-            }
-
-            if (streamState.activeText && textBlockId) {
-              controller.enqueue({ id: textBlockId, type: "text-end" });
-            }
-
-            const finalFinishReason = streamResponse.getFinishReason();
-            if (finalFinishReason) {
-              streamState.finishReason = mapFinishReason(finalFinishReason);
-            } else if (didEmitAnyToolCalls) {
-              streamState.finishReason = {
-                raw: undefined,
-                unified: "tool-calls",
-              };
-            }
-
-            const finalUsage = streamResponse.getTokenUsage();
-            if (finalUsage) {
-              streamState.usage.inputTokens.total = finalUsage.prompt_tokens;
-              streamState.usage.inputTokens.noCache = finalUsage.prompt_tokens;
-              streamState.usage.outputTokens.total = finalUsage.completion_tokens;
-              streamState.usage.outputTokens.text = finalUsage.completion_tokens;
-            }
-
-            controller.enqueue({
-              finishReason: streamState.finishReason,
-              providerMetadata: {
-                [providerName]: {
-                  finishReason: streamState.finishReason.raw,
-                  responseId,
-                  version: VERSION,
-                },
-              },
-              type: "finish",
-              usage: streamState.usage,
-            });
-
-            controller.close();
-          } catch (error) {
-            const aiError = convertToAISDKError(error, {
-              operation: "doStream",
-              requestBody: createAISDKRequestBodySummary(options),
-              url: "sap-ai:foundation-models",
-            });
-            controller.enqueue({
-              error: aiError instanceof Error ? aiError : new Error(String(aiError)),
-              type: "error",
-            });
-            controller.close();
-          }
-        },
+      const transformedStream = createStreamTransformer({
+        convertToAISDKError,
+        idGenerator,
+        includeRawChunks: options.includeRawChunks ?? false,
+        modelId: config.modelId,
+        options,
+        providerName: getProviderName(config.provider),
+        responseId,
+        sdkStream: streamResponse.stream as AsyncIterable<SDKStreamChunk>,
+        streamResponseGetFinishReason: () => streamResponse.getFinishReason(),
+        streamResponseGetTokenUsage: () => streamResponse.getTokenUsage(),
+        url: "sap-ai:foundation-models",
+        version: VERSION,
+        warnings,
       });
 
       return {

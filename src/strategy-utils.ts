@@ -7,8 +7,11 @@
 import type {
   EmbeddingModelV3Embedding,
   LanguageModelV3CallOptions,
+  LanguageModelV3Content,
   LanguageModelV3FinishReason,
   LanguageModelV3FunctionTool,
+  LanguageModelV3GenerateResult,
+  LanguageModelV3StreamPart,
   SharedV3Warning,
 } from "@ai-sdk/provider";
 import type { DeploymentIdConfig, ResourceGroupConfig } from "@sap-ai-sdk/ai-api/internal.js";
@@ -58,6 +61,27 @@ export interface FunctionToolWithParameters extends LanguageModelV3FunctionTool 
 }
 
 /**
+ * Configuration for building a LanguageModelV3GenerateResult.
+ * @internal
+ */
+export interface GenerateResultConfig {
+  /** Model identifier (e.g., 'gpt-4o'). */
+  readonly modelId: string;
+  /** Provider name for providerMetadata key. */
+  readonly providerName: string;
+  /** Original request body for response.request.body. */
+  readonly requestBody: unknown;
+  /** SDK response object with accessor methods. */
+  readonly response: SDKResponse;
+  /** Normalized response headers. */
+  readonly responseHeaders: Record<string, string> | undefined;
+  /** Provider version string for metadata. */
+  readonly version: string;
+  /** Warnings from request building. */
+  readonly warnings: SharedV3Warning[];
+}
+
+/**
  * Parameter mapping for AI SDK options → SAP model params.
  *
  * Used to map between different parameter naming conventions:
@@ -95,6 +119,53 @@ export type SAPToolParameters = Record<string, unknown> & {
 };
 
 /**
+ * Common interface for SDK response objects (duck-typed).
+ * Implemented by OrchestrationResponse and AzureOpenAiChatCompletionResponse.
+ * @internal
+ */
+export interface SDKResponse {
+  /** Returns text content. */
+  getContent(): null | string | undefined;
+  /** Returns finish reason string. */
+  getFinishReason(): null | string | undefined;
+  /** Returns token usage statistics. */
+  getTokenUsage(): undefined | { completion_tokens?: number; prompt_tokens?: number };
+  /** Returns tool calls array if present. */
+  getToolCalls():
+    | null
+    | undefined
+    | {
+        function: { arguments: string; name: string };
+        id: string;
+      }[];
+  /** Raw HTTP response with headers. */
+  rawResponse: { headers: Headers | Record<string, string> };
+}
+
+/**
+ * Interface for SDK stream chunks.
+ * Both Orchestration and Foundation Models SDK chunks implement these methods.
+ * @internal
+ */
+export interface SDKStreamChunk {
+  /** Internal data for raw chunk emission. */
+  _data?: unknown;
+  /** Get the text content delta. */
+  getDeltaContent(): null | string | undefined;
+  /** Get the tool call deltas. */
+  getDeltaToolCalls():
+    | null
+    | undefined
+    | {
+        function?: { arguments?: string; name?: string };
+        id?: string;
+        index?: number;
+      }[];
+  /** Get the finish reason if present in this chunk. */
+  getFinishReason(): null | string | undefined;
+}
+
+/**
  * State object for tracking streaming response processing.
  * @internal
  */
@@ -119,6 +190,62 @@ export interface StreamState {
       total: number | undefined;
     };
   };
+}
+
+/**
+ * Configuration for creating a stream transformer.
+ * @internal
+ */
+export interface StreamTransformerConfig {
+  /** Function to convert errors to AI SDK format. */
+  readonly convertToAISDKError: (
+    error: unknown,
+    context: { operation: string; requestBody: unknown; url: string },
+  ) => unknown;
+  /** The ID generator for creating unique IDs. */
+  readonly idGenerator: StreamIdGenerator;
+  /** Whether to include raw chunks in the output. */
+  readonly includeRawChunks: boolean;
+  /** The model identifier. */
+  readonly modelId: string;
+  /** The AI SDK call options (for error context). */
+  readonly options: LanguageModelV3CallOptions;
+  /** The provider name for metadata. */
+  readonly providerName: string;
+  /** The pre-generated response ID. */
+  readonly responseId: string;
+  /** The SDK stream to transform. */
+  readonly sdkStream: AsyncIterable<SDKStreamChunk>;
+  /** Function to get the final finish reason from the stream response. */
+  readonly streamResponseGetFinishReason: () => null | string | undefined;
+  /** Function to get the final token usage from the stream response. */
+  readonly streamResponseGetTokenUsage: () =>
+    | null
+    | undefined
+    | { completion_tokens?: number; prompt_tokens?: number };
+  /** The URL identifier for error context. */
+  readonly url: string;
+  /** The provider version string for metadata. */
+  readonly version: string;
+  /** Warnings to include in the stream-start event. */
+  readonly warnings: readonly SharedV3Warning[];
+}
+
+/**
+ * Represents a tool call being accumulated during streaming.
+ * @internal
+ */
+export interface ToolCallInProgress {
+  /** Accumulated JSON arguments string. */
+  arguments: string;
+  /** Whether the tool-call event has been emitted. */
+  didEmitCall: boolean;
+  /** Whether the tool-input-start event has been emitted. */
+  didEmitInputStart: boolean;
+  /** The tool call identifier. */
+  id: string;
+  /** The name of the tool being called. */
+  toolName?: string;
 }
 
 /**
@@ -176,6 +303,71 @@ export function applyParameterOverrides(
       delete modelParams[mapping.camelCaseKey];
     }
   }
+}
+
+/**
+ * Builds a LanguageModelV3GenerateResult from SDK response.
+ * @param config - Configuration with response and metadata.
+ * @returns Complete generate result for AI SDK.
+ * @internal
+ */
+export function buildGenerateResult(config: GenerateResultConfig): LanguageModelV3GenerateResult {
+  const { modelId, providerName, requestBody, response, responseHeaders, version, warnings } =
+    config;
+
+  const content = extractResponseContent(response);
+
+  const tokenUsage = response.getTokenUsage();
+  const finishReasonRaw = response.getFinishReason();
+  const finishReason = mapFinishReason(finishReasonRaw);
+
+  const textContent = response.getContent();
+  const toolCalls = response.getToolCalls();
+
+  const rawResponseBody = {
+    content: textContent,
+    finishReason: finishReasonRaw,
+    tokenUsage,
+    toolCalls,
+  };
+
+  return {
+    content,
+    finishReason,
+    providerMetadata: {
+      [providerName]: {
+        finishReason: finishReasonRaw ?? "unknown",
+        finishReasonMapped: finishReason,
+        ...(typeof responseHeaders?.["x-request-id"] === "string"
+          ? { requestId: responseHeaders["x-request-id"] }
+          : {}),
+        version,
+      },
+    },
+    request: {
+      body: requestBody,
+    },
+    response: {
+      body: rawResponseBody,
+      headers: responseHeaders,
+      modelId,
+      timestamp: new Date(),
+    },
+    usage: {
+      inputTokens: {
+        cacheRead: undefined,
+        cacheWrite: undefined,
+        noCache: tokenUsage?.prompt_tokens,
+        total: tokenUsage?.prompt_tokens,
+      },
+      outputTokens: {
+        reasoning: undefined,
+        text: tokenUsage?.completion_tokens,
+        total: tokenUsage?.completion_tokens,
+      },
+    },
+    warnings,
+  };
 }
 
 /**
@@ -329,6 +521,303 @@ export function createInitialStreamState(): StreamState {
       },
     },
   };
+}
+
+/**
+ * Creates a ReadableStream that transforms SAP AI SDK streaming responses
+ * into Vercel AI SDK LanguageModelV3StreamPart events.
+ *
+ * This function encapsulates the common streaming logic used by both
+ * Orchestration and Foundation Models strategies, handling:
+ * - Stream lifecycle events (stream-start, response-metadata, finish)
+ * - Text content streaming (text-start, text-delta, text-end)
+ * - Tool call streaming (tool-input-start, tool-input-delta, tool-input-end, tool-call)
+ * - Error handling and conversion to AI SDK errors
+ * - Token usage extraction
+ * @param config - The stream transformer configuration containing all dependencies.
+ * @returns A ReadableStream of LanguageModelV3StreamPart events.
+ * @internal
+ */
+export function createStreamTransformer(
+  config: StreamTransformerConfig,
+): ReadableStream<LanguageModelV3StreamPart> {
+  const {
+    convertToAISDKError,
+    idGenerator,
+    includeRawChunks,
+    modelId,
+    options,
+    providerName,
+    responseId,
+    sdkStream,
+    streamResponseGetFinishReason,
+    streamResponseGetTokenUsage,
+    url,
+    version,
+    warnings,
+  } = config;
+
+  let textBlockId: null | string = null;
+  const streamState = createInitialStreamState();
+  const toolCallsInProgress = new Map<number, ToolCallInProgress>();
+
+  return new ReadableStream<LanguageModelV3StreamPart>({
+    cancel() {
+      // No cleanup needed - SDK handles stream cancellation internally
+    },
+    async start(controller) {
+      controller.enqueue({
+        type: "stream-start",
+        warnings: [...warnings],
+      });
+
+      try {
+        for await (const chunk of sdkStream) {
+          if (includeRawChunks) {
+            controller.enqueue({
+              rawValue: (chunk as { _data?: unknown })._data ?? chunk,
+              type: "raw",
+            });
+          }
+
+          if (streamState.isFirstChunk) {
+            streamState.isFirstChunk = false;
+            controller.enqueue({
+              id: responseId,
+              modelId,
+              timestamp: new Date(),
+              type: "response-metadata",
+            });
+          }
+
+          const deltaToolCalls = chunk.getDeltaToolCalls();
+          if (Array.isArray(deltaToolCalls) && deltaToolCalls.length > 0) {
+            streamState.finishReason = {
+              raw: undefined,
+              unified: "tool-calls",
+            };
+          }
+
+          const deltaContent = chunk.getDeltaContent();
+          if (
+            typeof deltaContent === "string" &&
+            deltaContent.length > 0 &&
+            streamState.finishReason.unified !== "tool-calls"
+          ) {
+            if (!streamState.activeText) {
+              textBlockId = idGenerator.generateTextBlockId();
+              controller.enqueue({ id: textBlockId, type: "text-start" });
+              streamState.activeText = true;
+            }
+            if (textBlockId) {
+              controller.enqueue({
+                delta: deltaContent,
+                id: textBlockId,
+                type: "text-delta",
+              });
+            }
+          }
+
+          if (Array.isArray(deltaToolCalls) && deltaToolCalls.length > 0) {
+            for (const toolCallChunk of deltaToolCalls) {
+              const index = toolCallChunk.index;
+              if (typeof index !== "number" || !Number.isFinite(index)) {
+                continue;
+              }
+
+              if (!toolCallsInProgress.has(index)) {
+                toolCallsInProgress.set(index, {
+                  arguments: "",
+                  didEmitCall: false,
+                  didEmitInputStart: false,
+                  id: toolCallChunk.id ?? `tool_${String(index)}`,
+                  toolName: toolCallChunk.function?.name,
+                });
+              }
+
+              const tc = toolCallsInProgress.get(index);
+              if (!tc) continue;
+
+              if (toolCallChunk.id) {
+                tc.id = toolCallChunk.id;
+              }
+
+              const nextToolName = toolCallChunk.function?.name;
+              if (typeof nextToolName === "string" && nextToolName.length > 0) {
+                tc.toolName = nextToolName;
+              }
+
+              if (!tc.didEmitInputStart && tc.toolName) {
+                tc.didEmitInputStart = true;
+                controller.enqueue({
+                  id: tc.id,
+                  toolName: tc.toolName,
+                  type: "tool-input-start",
+                });
+              }
+
+              const argumentsDelta = toolCallChunk.function?.arguments;
+              if (typeof argumentsDelta === "string" && argumentsDelta.length > 0) {
+                tc.arguments += argumentsDelta;
+
+                if (tc.didEmitInputStart) {
+                  controller.enqueue({
+                    delta: argumentsDelta,
+                    id: tc.id,
+                    type: "tool-input-delta",
+                  });
+                }
+              }
+            }
+          }
+
+          const chunkFinishReason = chunk.getFinishReason();
+          if (chunkFinishReason) {
+            streamState.finishReason = mapFinishReason(chunkFinishReason);
+
+            if (streamState.finishReason.unified === "tool-calls") {
+              const toolCalls = Array.from(toolCallsInProgress.values());
+              for (const tc of toolCalls) {
+                if (tc.didEmitCall) {
+                  continue;
+                }
+                if (!tc.didEmitInputStart) {
+                  tc.didEmitInputStart = true;
+                  controller.enqueue({
+                    id: tc.id,
+                    toolName: tc.toolName ?? "",
+                    type: "tool-input-start",
+                  });
+                }
+
+                tc.didEmitCall = true;
+                controller.enqueue({ id: tc.id, type: "tool-input-end" });
+                controller.enqueue({
+                  input: tc.arguments,
+                  toolCallId: tc.id,
+                  toolName: tc.toolName ?? "",
+                  type: "tool-call",
+                });
+              }
+
+              if (streamState.activeText && textBlockId) {
+                controller.enqueue({ id: textBlockId, type: "text-end" });
+                streamState.activeText = false;
+              }
+            }
+          }
+        }
+
+        const toolCalls = Array.from(toolCallsInProgress.values());
+        let didEmitAnyToolCalls = false;
+
+        for (const tc of toolCalls) {
+          if (tc.didEmitCall) {
+            continue;
+          }
+
+          if (!tc.didEmitInputStart) {
+            tc.didEmitInputStart = true;
+            controller.enqueue({
+              id: tc.id,
+              toolName: tc.toolName ?? "",
+              type: "tool-input-start",
+            });
+          }
+
+          didEmitAnyToolCalls = true;
+          tc.didEmitCall = true;
+          controller.enqueue({ id: tc.id, type: "tool-input-end" });
+          controller.enqueue({
+            input: tc.arguments,
+            toolCallId: tc.id,
+            toolName: tc.toolName ?? "",
+            type: "tool-call",
+          });
+        }
+
+        if (streamState.activeText && textBlockId) {
+          controller.enqueue({ id: textBlockId, type: "text-end" });
+        }
+
+        const finalFinishReason = streamResponseGetFinishReason();
+        if (finalFinishReason) {
+          streamState.finishReason = mapFinishReason(finalFinishReason);
+        } else if (didEmitAnyToolCalls) {
+          streamState.finishReason = {
+            raw: undefined,
+            unified: "tool-calls",
+          };
+        }
+
+        const finalUsage = streamResponseGetTokenUsage();
+        if (finalUsage) {
+          streamState.usage.inputTokens.total = finalUsage.prompt_tokens;
+          streamState.usage.inputTokens.noCache = finalUsage.prompt_tokens;
+          streamState.usage.outputTokens.total = finalUsage.completion_tokens;
+          streamState.usage.outputTokens.text = finalUsage.completion_tokens;
+        }
+
+        controller.enqueue({
+          finishReason: streamState.finishReason,
+          providerMetadata: {
+            [providerName]: {
+              finishReason: streamState.finishReason.raw,
+              responseId,
+              version,
+            },
+          },
+          type: "finish",
+          usage: streamState.usage,
+        });
+
+        controller.close();
+      } catch (error) {
+        const aiError = convertToAISDKError(error, {
+          operation: "doStream",
+          requestBody: createAISDKRequestBodySummary(options),
+          url,
+        });
+        controller.enqueue({
+          error: aiError instanceof Error ? aiError : new Error(String(aiError)),
+          type: "error",
+        });
+        controller.close();
+      }
+    },
+  });
+}
+
+/**
+ * Extracts content (text and tool calls) from SDK response.
+ * @param response - SDK response object.
+ * @returns Content array for LanguageModelV3GenerateResult.
+ * @internal
+ */
+export function extractResponseContent(response: SDKResponse): LanguageModelV3Content[] {
+  const content: LanguageModelV3Content[] = [];
+
+  const textContent = response.getContent();
+  if (textContent) {
+    content.push({
+      text: textContent,
+      type: "text",
+    });
+  }
+
+  const toolCalls = response.getToolCalls();
+  if (toolCalls) {
+    for (const toolCall of toolCalls) {
+      content.push({
+        input: toolCall.function.arguments,
+        toolCallId: toolCall.id,
+        toolName: toolCall.function.name,
+        type: "tool-call",
+      });
+    }
+  }
+
+  return content;
 }
 
 /**
