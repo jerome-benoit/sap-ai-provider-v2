@@ -700,12 +700,16 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
     };
 
     // Merge placeholderValues: providerOptions override settings
-    const placeholderValues: Record<string, string> | undefined =
+    const mergedPlaceholderValues =
       orchSettings.placeholderValues || sapOptions?.placeholderValues
         ? {
             ...orchSettings.placeholderValues,
             ...sapOptions?.placeholderValues,
           }
+        : undefined;
+    const placeholderValues =
+      mergedPlaceholderValues && Object.keys(mergedPlaceholderValues).length > 0
+        ? mergedPlaceholderValues
         : undefined;
 
     return {
@@ -736,9 +740,7 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
       model: {
         ...orchestrationConfig.promptTemplating.model,
       },
-      ...(placeholderValues && Object.keys(placeholderValues).length > 0
-        ? { placeholderValues }
-        : {}),
+      ...(placeholderValues ? { placeholderValues } : {}),
       ...(promptTemplating.prompt.tools ? { tools: promptTemplating.prompt.tools } : {}),
       ...(promptTemplating.prompt.response_format
         ? { response_format: promptTemplating.prompt.response_format }
