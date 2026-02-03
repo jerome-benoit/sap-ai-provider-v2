@@ -3537,21 +3537,18 @@ describe("SAPAILanguageModel", () => {
         await resetMockStateForApi("orchestration");
       });
 
-      it.each([{ property: "placeholderValues", settings: { placeholderValues: {} } }])(
-        "should omit $property when empty object",
-        async ({ property, settings }) => {
-          const model = createOrchModel("gpt-4o", settings);
+      it("should omit placeholderValues when empty object", async () => {
+        const model = createOrchModel("gpt-4o", { placeholderValues: {} });
 
-          const prompt = createPrompt("Hello");
+        const prompt = createPrompt("Hello");
 
-          const result = await model.doGenerate({ prompt });
+        const result = await model.doGenerate({ prompt });
 
-          expectRequestBodyHasMessages(result);
+        expectRequestBodyHasMessages(result);
 
-          const request = await getLastOrchRequest();
-          expect(request).not.toHaveProperty(property);
-        },
-      );
+        const request = await getLastOrchRequest();
+        expect(request).not.toHaveProperty("placeholderValues");
+      });
 
       it("should include placeholderValues from settings in request body", async () => {
         const model = createOrchModel("gpt-4o", {
