@@ -165,7 +165,7 @@ export class OrchestrationEmbeddingModelStrategy implements EmbeddingModelAPIStr
 
     const moduleConfig: EmbeddingModuleConfig = {
       embeddings: embeddingConfig,
-      ...(masking && Object.keys(masking).length > 0 ? { masking } : {}),
+      ...(masking && Object.keys(masking as object).length > 0 ? { masking } : {}),
     };
 
     return new this.ClientClass(moduleConfig, config.deploymentConfig, config.destination);
