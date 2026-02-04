@@ -624,12 +624,12 @@ search, similarity matching, and clustering.
 
 ### Overview
 
-The SAP AI Provider implements the Vercel AI SDK's `EmbeddingModelV3` interface,
+The SAP AI Provider V2 implements the Vercel AI SDK's `EmbeddingModelV2` interface,
 enabling you to generate embeddings using models available through SAP AI Core.
 
 Key features:
 
-- Full `EmbeddingModelV3` specification compliance
+- Full `EmbeddingModelV2` specification compliance
 - Support for single and batch embedding generation
 - Configurable embedding types (`document`, `query`, `text`)
 - Automatic validation of batch sizes with `maxEmbeddingsPerCall`
@@ -646,7 +646,7 @@ const provider = createSAPAIProvider();
 
 // Single embedding
 const { embedding } = await embed({
-  model: provider.embedding("text-embedding-ada-002"),
+  model: provider.textEmbeddingModel("text-embedding-ada-002"),
   value: "What is machine learning?",
 });
 
@@ -654,7 +654,7 @@ console.log("Embedding dimensions:", embedding.length);
 
 // Multiple embeddings (batch)
 const { embeddings } = await embedMany({
-  model: provider.embedding("text-embedding-3-small"),
+  model: provider.textEmbeddingModel("text-embedding-3-small"),
   values: ["Hello world", "AI is transforming industries", "Vector databases"],
 });
 
@@ -666,7 +666,7 @@ console.log("Generated", embeddings.length, "embeddings");
 Configure embedding behavior with `SAPAIEmbeddingSettings`:
 
 ```typescript
-const model = provider.embedding("text-embedding-3-large", {
+const model = provider.textEmbeddingModel("text-embedding-3-large", {
   // Maximum embeddings per API call (default: 2048)
   maxEmbeddingsPerCall: 100,
 
@@ -691,7 +691,7 @@ Apply data masking to protect sensitive information before embedding generation
 ```typescript
 import { buildDpiMaskingProvider } from "@jerome-benoit/sap-ai-provider";
 
-const model = provider.embedding("text-embedding-ada-002", {
+const model = provider.textEmbeddingModel("text-embedding-ada-002", {
   masking: {
     masking_providers: [
       buildDpiMaskingProvider({
@@ -719,13 +719,13 @@ const { embedding } = await embed({
 
 ### SAPAIEmbeddingModel
 
-Implementation of Vercel AI SDK's `EmbeddingModelV3` interface.
+Implementation of Vercel AI SDK's `EmbeddingModelV2` interface.
 
 **Properties:**
 
 | Property               | Type     | Description                                       |
 | ---------------------- | -------- | ------------------------------------------------- |
-| `specificationVersion` | `'v3'`   | API specification version                         |
+| `specificationVersion` | `'v2'`   | API specification version                         |
 | `modelId`              | `string` | Embedding model identifier                        |
 | `provider`             | `string` | Provider identifier (`'sap-ai.embedding'`)        |
 | `maxEmbeddingsPerCall` | `number` | Maximum values per `doEmbed` call (default: 2048) |
@@ -762,7 +762,7 @@ async doEmbed(options: {
 **Example:**
 
 ```typescript
-const model = provider.embedding("text-embedding-ada-002");
+const model = provider.textEmbeddingModel("text-embedding-ada-002");
 
 // Direct model usage (advanced)
 const result = await model.doEmbed({
@@ -821,7 +821,7 @@ export type SAPAIEmbeddingModelId = string;
 
 ### `SAPAIProvider`
 
-Main provider interface extending Vercel AI SDK's `ProviderV3`.
+Main provider interface extending Vercel AI SDK's `ProviderV2`.
 
 **Properties:**
 
@@ -866,14 +866,15 @@ function).
 chat(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModel
 ```
 
-#### `provider.embedding(modelId, settings?)`
+#### `provider.textEmbeddingModel(modelId, settings?)`
 
-Create an embedding model instance.
+ProviderV2-compliant method for creating embedding model instances. This is the
+standard way to create embedding models in Vercel AI SDK V2.
 
 **Signature:**
 
 ```typescript
-embedding(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SAPAIEmbeddingModel
+textEmbeddingModel(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SAPAIEmbeddingModel
 ```
 
 **Parameters:**
@@ -884,28 +885,15 @@ embedding(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SA
 **Example:**
 
 ```typescript
-const embeddingModel = provider.embedding("text-embedding-3-small", {
+const embeddingModel = provider.textEmbeddingModel("text-embedding-3-small", {
   maxEmbeddingsPerCall: 100,
   type: "document",
 });
 ```
 
-#### `provider.textEmbeddingModel(modelId, settings?)`
-
-> **Deprecated:** Use `provider.embeddingModel()` instead. This method is
-> provided for backward compatibility.
-
-Alias for `embeddingModel()` method.
-
-**Signature:**
-
-```typescript
-textEmbeddingModel(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SAPAIEmbeddingModel
-```
-
 #### `provider.languageModel(modelId, settings?)`
 
-ProviderV3-compliant method for creating language model instances. This is the
+ProviderV2-compliant method for creating language model instances. This is the
 standard way to create language models in Vercel AI SDK.
 
 **Signature:**
@@ -922,7 +910,7 @@ languageModel(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageMod
 **Example:**
 
 ```typescript
-// Using the V3 standard method
+// Using the V2 standard method
 const model = provider.languageModel("gpt-4o", {
   modelParams: { temperature: 0.7 },
 });
@@ -931,37 +919,9 @@ const model = provider.languageModel("gpt-4o", {
 const model2 = provider("gpt-4o", { modelParams: { temperature: 0.7 } });
 ```
 
-#### `provider.embeddingModel(modelId, settings?)`
-
-ProviderV3-compliant method for creating embedding model instances. This is the
-standard way to create embedding models in Vercel AI SDK.
-
-**Signature:**
-
-```typescript
-embeddingModel(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SAPAIEmbeddingModel
-```
-
-**Parameters:**
-
-- `modelId`: Embedding model identifier (e.g., 'text-embedding-ada-002')
-- `settings`: Optional embedding model configuration
-
-**Example:**
-
-```typescript
-// Using the V3 standard method
-const embeddingModel = provider.embeddingModel("text-embedding-3-small", {
-  maxEmbeddingsPerCall: 100,
-});
-
-// Equivalent to provider.embedding()
-const embeddingModel2 = provider.embedding("text-embedding-3-small");
-```
-
 #### `provider.imageModel(modelId)`
 
-ProviderV3-compliant method for creating image generation models.
+ProviderV2-compliant method for creating image generation models.
 
 **Signature:**
 
@@ -990,15 +950,15 @@ try {
 
 #### `provider.specificationVersion`
 
-The ProviderV3 specification version identifier.
+The ProviderV2 specification version identifier.
 
-**Type:** `'v3'`
+**Type:** `'v2'`
 
 **Example:**
 
 ```typescript
 const provider = createSAPAIProvider();
-console.log(provider.specificationVersion); // 'v3'
+console.log(provider.specificationVersion); // 'v2'
 ```
 
 ---
@@ -1480,7 +1440,7 @@ import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai
 const provider = createSAPAIProvider();
 
 const { embedding } = await embed({
-  model: provider.embedding("text-embedding-ada-002"),
+  model: provider.textEmbeddingModel("text-embedding-ada-002"),
   value: "Search query text",
   providerOptions: {
     [SAP_AI_PROVIDER_NAME]: {
@@ -1975,13 +1935,13 @@ Standard entity types recognized by SAP DPI.
 
 ### `SAPAILanguageModel`
 
-Implementation of Vercel AI SDK's `LanguageModelV3` interface.
+Implementation of Vercel AI SDK's `LanguageModelV2` interface.
 
 **Properties:**
 
 | Property                      | Type                       | Description                                         |
 | ----------------------------- | -------------------------- | --------------------------------------------------- |
-| `specificationVersion`        | `'v3'`                     | API specification version (readonly)                |
+| `specificationVersion`        | `'v2'`                     | API specification version (readonly)                |
 | `modelId`                     | `SAPAIModelId`             | Current model identifier (readonly)                 |
 | `provider`                    | `string`                   | Provider identifier (getter, e.g., `'sap-ai.chat'`) |
 | `supportedUrls`               | `Record<string, RegExp[]>` | URL patterns for supported media (getter)           |
@@ -2002,13 +1962,13 @@ Generate a single completion (non-streaming).
 
 ```typescript
 async doGenerate(
-  options: LanguageModelV3CallOptions
+  options: LanguageModelV2CallOptions
 ): Promise<{
-  content: LanguageModelV3Content[];
-  finishReason: LanguageModelV3FinishReason;
-  usage: LanguageModelV3Usage;
+  content: LanguageModelV2Content[];
+  finishReason: LanguageModelV2FinishReason;
+  usage: LanguageModelV2Usage;
   rawCall: { rawPrompt: unknown; rawSettings: Record<string, unknown> };
-  warnings: LanguageModelV3CallWarning[];
+  warnings: LanguageModelV2CallWarning[];
 }>
 ```
 
@@ -2028,9 +1988,9 @@ Generate a streaming completion.
 
 ```typescript
 async doStream(
-  options: LanguageModelV3CallOptions
+  options: LanguageModelV2CallOptions
 ): Promise<{
-  stream: ReadableStream<LanguageModelV3StreamPart>;
+  stream: ReadableStream<LanguageModelV2StreamPart>;
   rawCall: { rawPrompt: unknown; rawSettings: Record<string, unknown> };
 }>
 ```
