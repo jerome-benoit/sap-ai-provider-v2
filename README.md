@@ -70,9 +70,10 @@ SAP's enterprise-grade AI models through the familiar Vercel AI SDK interface.
 - 🎨 **Multiple Models** - Support for GPT-4, Claude, Gemini, Nova, and more
 - ⚡ **Language Model V3** - Latest Vercel AI SDK specification with enhanced
   streaming
-- 📊 **Text Embeddings** - Generate vector embeddings for RAG and semantic search
-- 🔀 **Dual API Support** - Choose between Orchestration or Foundation Models API
-  per provider, model, or call
+- 📊 **Text Embeddings** - Generate vector embeddings for RAG and semantic
+  search
+- 🔀 **Dual API Support** - Choose between Orchestration or Foundation Models
+  API per provider, model, or call
 
 ## Quick Start
 
@@ -173,7 +174,10 @@ The provider supports two SAP AI Core APIs:
 [API Reference - Foundation Models API](./API_REFERENCE.md#api-comparison-orchestration-vs-foundation-models)
 
 ```typescript
-import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai-provider";
+import {
+  createSAPAIProvider,
+  SAP_AI_PROVIDER_NAME,
+} from "@jerome-benoit/sap-ai-provider";
 
 // Provider-level API selection
 const provider = createSAPAIProvider({
@@ -290,7 +294,7 @@ const result = await generateText({
 [examples/example-streaming-chat.ts](./examples/example-streaming-chat.ts)
 
 ```typescript
-import { streamText, APICallError } from "ai";
+import { APICallError, streamText } from "ai";
 
 try {
   const result = streamText({
@@ -505,7 +509,10 @@ const dpiConfig = buildDpiMaskingProvider({
 
 ```typescript
 import "dotenv/config"; // Load environment variables
-import { buildAzureContentSafetyFilter, createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
+import {
+  buildAzureContentSafetyFilter,
+  createSAPAIProvider,
+} from "@jerome-benoit/sap-ai-provider";
 
 const provider = createSAPAIProvider({
   defaultSettings: {
@@ -598,7 +605,10 @@ Options are validated at runtime with Zod schemas.
 
 ```typescript
 import { generateText } from "ai";
-import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai-provider";
+import {
+  createSAPAIProvider,
+  SAP_AI_PROVIDER_NAME,
+} from "@jerome-benoit/sap-ai-provider";
 
 const provider = createSAPAIProvider();
 
@@ -627,7 +637,8 @@ authentication, model parameters, data masking, content filtering, and more.
 
 **Common Configuration:**
 
-- `name`: Provider name (default: `'sap-ai'`). Used as key in `providerOptions`/`providerMetadata`.
+- `name`: Provider name (default: `'sap-ai'`). Used as key in
+  `providerOptions`/`providerMetadata`.
 - `resourceGroup`: SAP AI Core resource group (default: 'default')
 - `deploymentId`: Specific deployment ID (auto-resolved if not set)
 - `modelParams`: Temperature, maxTokens, topP, and other generation parameters
@@ -648,8 +659,8 @@ error handling across providers.
 
 - **[API Reference - Error Handling](./API_REFERENCE.md#error-handling--reference)** -
   Complete examples, error types, and SAP-specific metadata
-- **[Troubleshooting Guide](./TROUBLESHOOTING.md)** - Solutions for common errors
-  (401, 404, 429, 5xx)
+- **[Troubleshooting Guide](./TROUBLESHOOTING.md)** - Solutions for common
+  errors (401, 404, 429, 5xx)
 
 ## Troubleshooting
 
@@ -688,7 +699,8 @@ Error code reference table:
 
 Follow security best practices when handling credentials. See
 [Environment Setup - Security Best Practices](./ENVIRONMENT_SETUP.md#security-best-practices)
-for detailed guidance on credential management, key rotation, and secure deployment.
+for detailed guidance on credential management, key rotation, and secure
+deployment.
 
 ## Debug Mode
 
@@ -756,8 +768,9 @@ complete upgrade instructions.**
 ### Upgrading from v2.x to v3.x
 
 Version 3.0 standardizes error handling to use Vercel AI SDK native error types.
-**See the [Migration Guide](./MIGRATION_GUIDE.md#version-2x-to-3x-breaking-changes) for complete upgrade
-instructions.**
+**See the
+[Migration Guide](./MIGRATION_GUIDE.md#version-2x-to-3x-breaking-changes) for
+complete upgrade instructions.**
 
 **Key changes:**
 
@@ -768,8 +781,8 @@ instructions.**
 ### Upgrading from v1.x to v2.x
 
 Version 2.0 uses the official SAP AI SDK. **See the
-[Migration Guide](./MIGRATION_GUIDE.md#version-1x-to-2x-breaking-changes) for complete upgrade
-instructions.**
+[Migration Guide](./MIGRATION_GUIDE.md#version-1x-to-2x-breaking-changes) for
+complete upgrade instructions.**
 
 **Key changes:**
 
@@ -783,9 +796,9 @@ instructions.**
 ## Important Note
 
 > **Third-Party Provider**: This SAP AI Provider
-> (`@jerome-benoit/sap-ai-provider`) is developed and maintained by jerome-benoit, not
-> by SAP SE. While it uses the official SAP AI SDK and integrates with SAP AI
-> Core services, it is not an official SAP product.
+> (`@jerome-benoit/sap-ai-provider`) is developed and maintained by
+> jerome-benoit, not by SAP SE. While it uses the official SAP AI SDK and
+> integrates with SAP AI Core services, it is not an official SAP product.
 
 ## Contributing
 
@@ -810,8 +823,8 @@ for details.
 
 ### Community
 
-- 🐛 [Issue Tracker](https://github.com/jerome-benoit/sap-ai-provider/issues) - Report
-  bugs, request features, and ask questions
+- 🐛 [Issue Tracker](https://github.com/jerome-benoit/sap-ai-provider/issues) -
+  Report bugs, request features, and ask questions
 
 ### Related Projects
 
