@@ -22,20 +22,16 @@ import type { FoundationModelsModelSettings, SAPAIModelSettings } from "./sap-ai
 import type { LanguageModelAPIStrategy, LanguageModelStrategyConfig } from "./sap-ai-strategy.js";
 
 import { convertToSAPMessages } from "./convert-to-sap-messages.js";
-import { deepMerge } from "./deep-merge.js";
 import { convertToAISDKError, normalizeHeaders } from "./sap-ai-error.js";
+import { getProviderName, sapAILanguageModelProviderOptions } from "./sap-ai-provider-options.js";
 import {
-  getProviderName,
-  sapAILanguageModelProviderOptions,
-  validateModelParamsWithWarnings,
-} from "./sap-ai-provider-options.js";
-import {
-  applyParameterOverrides,
   buildGenerateResult,
   buildModelDeployment,
+  buildModelParams,
+  convertResponseFormat,
+  convertToolsToSAPFormat,
   createAISDKRequestBodySummary,
   createStreamTransformer,
-  extractToolParameters,
   mapToolChoice,
   type ParamMapping,
   type SDKResponse,
@@ -225,94 +221,30 @@ export class FoundationModelsLanguageModelStrategy implements LanguageModelAPISt
       includeReasoning: sapOptions?.includeReasoning ?? fmSettings.includeReasoning ?? false,
     });
 
-    let tools: AzureOpenAiChatCompletionTool[] | undefined;
+    // Convert AI SDK tools to SAP format using shared helper
+    const toolsResult = convertToolsToSAPFormat<AzureOpenAiChatCompletionTool>(options.tools);
+    const tools = toolsResult.tools;
+    warnings.push(...toolsResult.warnings);
 
-    const optionsTools = options.tools;
-
-    if (optionsTools && optionsTools.length > 0) {
-      tools = optionsTools
-        .map((tool): AzureOpenAiChatCompletionTool | null => {
-          if (tool.type === "function") {
-            const { parameters, warning } = extractToolParameters(tool);
-            if (warning) {
-              warnings.push(warning);
-            }
-
-            return {
-              function: {
-                name: tool.name,
-                parameters,
-                ...(tool.description ? { description: tool.description } : {}),
-              },
-              type: "function",
-            };
-          } else {
-            warnings.push({
-              details: "Only 'function' tool type is supported.",
-              feature: `tool type for ${tool.name}`,
-              type: "unsupported",
-            });
-            return null;
-          }
-        })
-        .filter((t): t is AzureOpenAiChatCompletionTool => t !== null);
-    }
-
-    const modelParams: Record<string, unknown> = deepMerge(
-      fmSettings.modelParams ?? {},
-      sapOptions?.modelParams ?? {},
-    );
-
-    applyParameterOverrides(
-      modelParams,
-      options as Record<string, unknown>,
-      sapOptions?.modelParams as Record<string, unknown> | undefined,
-      fmSettings.modelParams as Record<string, unknown> | undefined,
-      PARAM_MAPPINGS,
-    );
-
-    if (options.stopSequences && options.stopSequences.length > 0) {
-      modelParams.stop = options.stopSequences;
-    }
-
-    validateModelParamsWithWarnings(
-      {
-        frequencyPenalty: options.frequencyPenalty,
-        maxTokens: options.maxOutputTokens,
-        presencePenalty: options.presencePenalty,
-        temperature: options.temperature,
-        topP: options.topP,
-      },
-      warnings,
-    );
+    // Build model parameters using shared helper
+    const { modelParams, warnings: paramWarnings } = buildModelParams({
+      options,
+      paramMappings: PARAM_MAPPINGS,
+      providerModelParams: sapOptions?.modelParams as Record<string, unknown> | undefined,
+      settingsModelParams: fmSettings.modelParams as Record<string, unknown> | undefined,
+    });
+    warnings.push(...paramWarnings);
 
     // Map Vercel AI SDK toolChoice to SAP Foundation Models tool_choice
     const toolChoice = mapToolChoice(options.toolChoice);
 
-    let responseFormat: AzureOpenAiChatCompletionParameters["response_format"];
-    if (options.responseFormat?.type === "json") {
-      responseFormat = options.responseFormat.schema
-        ? {
-            json_schema: {
-              description: options.responseFormat.description,
-              name: options.responseFormat.name ?? "response",
-              schema: options.responseFormat.schema as Record<string, unknown>,
-              strict: null,
-            },
-            type: "json_schema" as const,
-          }
-        : { type: "json_object" as const };
-    } else if (fmSettings.responseFormat) {
-      responseFormat =
-        fmSettings.responseFormat as AzureOpenAiChatCompletionParameters["response_format"];
-    }
-
-    if (responseFormat && responseFormat.type !== "text") {
-      warnings.push({
-        message:
-          "responseFormat JSON mode is forwarded to the underlying model; support and schema adherence depend on the model/deployment.",
-        type: "other",
-      });
+    // Convert response format using shared helper
+    const { responseFormat, warning: responseFormatWarning } = convertResponseFormat(
+      options.responseFormat,
+      fmSettings.responseFormat,
+    );
+    if (responseFormatWarning) {
+      warnings.push(responseFormatWarning);
     }
 
     // Pass through all model params (known and unknown) to the API

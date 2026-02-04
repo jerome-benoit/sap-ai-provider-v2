@@ -19,6 +19,9 @@ import type { ZodType } from "zod";
 
 import { z } from "zod";
 
+import { deepMerge } from "./deep-merge.js";
+import { validateModelParamsWithWarnings } from "./sap-ai-provider-options.js";
+
 /**
  * Vercel AI SDK tool choice type.
  * @internal
@@ -39,6 +42,54 @@ export interface BaseModelDeploymentConfig {
   readonly deploymentConfig: DeploymentIdConfig | ResourceGroupConfig;
   /** The model identifier (e.g., 'gpt-4o', 'text-embedding-ada-002'). */
   readonly modelId: string;
+}
+
+/**
+ * Configuration for building model parameters.
+ * @internal
+ */
+export interface BuildModelParamsConfig {
+  /** AI SDK call options. */
+  readonly options: LanguageModelV3CallOptions;
+  /** Parameter mappings for the strategy. */
+  readonly paramMappings: readonly ParamMapping[];
+  /** Provider options model params. */
+  readonly providerModelParams?: Record<string, unknown>;
+  /** Settings model params. */
+  readonly settingsModelParams?: Record<string, unknown>;
+}
+
+/**
+ * Result of building model parameters.
+ * @internal
+ */
+export interface BuildModelParamsResult {
+  /** The merged and validated model parameters. */
+  readonly modelParams: Record<string, unknown>;
+  /** Validation warnings. */
+  readonly warnings: SharedV3Warning[];
+}
+
+/**
+ * Result of converting AI SDK response format to SAP format.
+ * @internal
+ */
+export interface ConvertedResponseFormatResult {
+  /** The converted response format, or undefined if not applicable. */
+  readonly responseFormat: SAPResponseFormat | undefined;
+  /** Warning about JSON mode support, if applicable. */
+  readonly warning: SharedV3Warning | undefined;
+}
+
+/**
+ * Result of converting AI SDK tools to SAP format.
+ * @internal
+ */
+export interface ConvertedToolsResult<T> {
+  /** The converted tools array, or undefined if no tools. */
+  readonly tools: T[] | undefined;
+  /** Warnings generated during conversion. */
+  readonly warnings: SharedV3Warning[];
 }
 
 /**
@@ -96,6 +147,39 @@ export interface ParamMapping {
   readonly optionKey?: string;
   /** Output key for SAP API (e.g., 'max_tokens', 'top_p'). */
   readonly outputKey: string;
+}
+
+/**
+ * SAP-compatible response format type.
+ * Used by both Orchestration and Foundation Models APIs.
+ * @internal
+ */
+export type SAPResponseFormat =
+  | {
+      json_schema: {
+        description?: string;
+        name: string;
+        schema: Record<string, unknown>;
+        strict: boolean | null;
+      };
+      type: "json_schema";
+    }
+  | { type: "json_object" }
+  | { type: "text" };
+
+/**
+ * SAP-compatible tool definition.
+ * Common structure used by both APIs.
+ * Uses generic parameter type to accommodate different SDK types.
+ * @internal
+ */
+export interface SAPTool<P = SAPToolParameters> {
+  function: {
+    description?: string;
+    name: string;
+    parameters?: P;
+  };
+  type: "function";
 }
 
 /**
@@ -246,6 +330,24 @@ export interface ToolCallInProgress {
   id: string;
   /** The name of the tool being called. */
   toolName?: string;
+}
+
+/**
+ * AI SDK tool interface for conversion to SAP format.
+ *
+ * Represents the common structure of tools from Vercel AI SDK that can be
+ * converted to SAP-compatible format. Only 'function' type tools are supported.
+ * @internal
+ */
+interface AISDKTool {
+  /** Optional tool description. */
+  description?: string;
+  /** JSON Schema for tool input parameters. */
+  inputSchema?: unknown;
+  /** Tool name identifier. */
+  name: string;
+  /** Tool type (only 'function' is supported). */
+  type: string;
 }
 
 /**
@@ -404,6 +506,54 @@ export function buildModelDeployment(
 }
 
 /**
+ * Builds and validates model parameters from multiple sources.
+ *
+ * Merges parameters from settings and provider options, applies AI SDK option overrides,
+ * handles stop sequences, and validates parameter ranges.
+ * @param config - Configuration with options, mappings, and source parameters.
+ * @returns The merged model parameters and validation warnings.
+ * @internal
+ */
+export function buildModelParams(config: BuildModelParamsConfig): BuildModelParamsResult {
+  const { options, paramMappings, providerModelParams, settingsModelParams } = config;
+  const warnings: SharedV3Warning[] = [];
+
+  // Deep merge settings and provider options
+  const modelParams: Record<string, unknown> = deepMerge(
+    settingsModelParams ?? {},
+    providerModelParams ?? {},
+  );
+
+  // Apply parameter overrides from AI SDK options
+  applyParameterOverrides(
+    modelParams,
+    options as Record<string, unknown>,
+    providerModelParams,
+    settingsModelParams,
+    paramMappings,
+  );
+
+  // Handle stop sequences
+  if (options.stopSequences && options.stopSequences.length > 0) {
+    modelParams.stop = options.stopSequences;
+  }
+
+  // Validate parameter ranges
+  validateModelParamsWithWarnings(
+    {
+      frequencyPenalty: options.frequencyPenalty,
+      maxTokens: options.maxOutputTokens,
+      presencePenalty: options.presencePenalty,
+      temperature: options.temperature,
+      topP: options.topP,
+    },
+    warnings,
+  );
+
+  return { modelParams, warnings };
+}
+
+/**
  * Builds SAP AI SDK-compatible tool parameters from a JSON schema.
  *
  * Handles edge cases:
@@ -448,6 +598,103 @@ export function buildSAPToolParameters(schema: Record<string, unknown>): SAPTool
     required,
     type: "object",
     ...additionalFields,
+  };
+}
+
+/**
+ * Converts AI SDK response format to SAP-compatible format.
+ *
+ * Handles conversion of structured output schemas:
+ * - `{ type: 'json', schema: ... }` → `{ type: 'json_schema', json_schema: ... }`
+ * - `{ type: 'json' }` → `{ type: 'json_object' }`
+ * @param optionsResponseFormat - The AI SDK response format from call options.
+ * @param settingsResponseFormat - The fallback response format from settings.
+ * @returns The converted response format and any warning.
+ * @internal
+ */
+export function convertResponseFormat(
+  optionsResponseFormat: LanguageModelV3CallOptions["responseFormat"],
+  settingsResponseFormat?: unknown,
+): ConvertedResponseFormatResult {
+  let responseFormat: SAPResponseFormat | undefined;
+  let warning: SharedV3Warning | undefined;
+
+  if (optionsResponseFormat?.type === "json") {
+    responseFormat = optionsResponseFormat.schema
+      ? {
+          json_schema: {
+            description: optionsResponseFormat.description,
+            name: optionsResponseFormat.name ?? "response",
+            schema: optionsResponseFormat.schema as Record<string, unknown>,
+            strict: null,
+          },
+          type: "json_schema" as const,
+        }
+      : { type: "json_object" as const };
+  } else if (settingsResponseFormat) {
+    responseFormat = settingsResponseFormat as SAPResponseFormat;
+  }
+
+  if (responseFormat && responseFormat.type !== "text") {
+    warning = {
+      message:
+        "responseFormat JSON mode is forwarded to the underlying model; support and schema adherence depend on the model/deployment.",
+      type: "other",
+    };
+  }
+
+  return { responseFormat, warning };
+}
+
+/**
+ * Converts AI SDK tools to SAP-compatible tool format.
+ *
+ * This helper extracts the common tool conversion logic used by both
+ * Orchestration and Foundation Models strategies.
+ * @param tools - The AI SDK tools to convert.
+ * @returns The converted tools and any warnings.
+ * @template T - The specific SAP tool type (allows API-specific extensions).
+ * @internal
+ */
+export function convertToolsToSAPFormat<T extends SAPTool<unknown>>(
+  tools: AISDKTool[] | undefined,
+): ConvertedToolsResult<T> {
+  const warnings: SharedV3Warning[] = [];
+
+  if (!tools || tools.length === 0) {
+    return { tools: undefined, warnings };
+  }
+
+  const convertedTools = tools
+    .map((tool): null | T => {
+      if (tool.type === "function") {
+        const { parameters, warning } = extractToolParameters(tool as LanguageModelV3FunctionTool);
+        if (warning) {
+          warnings.push(warning);
+        }
+
+        return {
+          function: {
+            name: tool.name,
+            parameters,
+            ...(tool.description ? { description: tool.description } : {}),
+          },
+          type: "function",
+        } as T;
+      } else {
+        warnings.push({
+          details: "Only 'function' tool type is supported.",
+          feature: `tool type for ${tool.name}`,
+          type: "unsupported",
+        });
+        return null;
+      }
+    })
+    .filter((t): t is T => t !== null);
+
+  return {
+    tools: convertedTools.length > 0 ? convertedTools : undefined,
+    warnings,
   };
 }
 

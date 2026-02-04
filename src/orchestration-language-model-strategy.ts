@@ -17,7 +17,6 @@ import type {
   OrchestrationClient,
   OrchestrationModuleConfig,
 } from "@sap-ai-sdk/orchestration";
-import type { Template } from "@sap-ai-sdk/orchestration/dist/client/api/schema/template.js";
 
 import { parseProviderOptions } from "@ai-sdk/provider-utils";
 
@@ -30,19 +29,15 @@ import type {
 import type { LanguageModelAPIStrategy, LanguageModelStrategyConfig } from "./sap-ai-strategy.js";
 
 import { convertToSAPMessages } from "./convert-to-sap-messages.js";
-import { deepMerge } from "./deep-merge.js";
 import { convertToAISDKError, normalizeHeaders } from "./sap-ai-error.js";
+import { getProviderName, sapAILanguageModelProviderOptions } from "./sap-ai-provider-options.js";
 import {
-  getProviderName,
-  sapAILanguageModelProviderOptions,
-  validateModelParamsWithWarnings,
-} from "./sap-ai-provider-options.js";
-import {
-  applyParameterOverrides,
   buildGenerateResult,
+  buildModelParams,
+  convertResponseFormat,
+  convertToolsToSAPFormat,
   createAISDKRequestBodySummary,
   createStreamTransformer,
-  extractToolParameters,
   mapToolChoice,
   type ParamMapping,
   type SAPToolChoice,
@@ -77,12 +72,6 @@ type SAPModelParams = LlmModelParams & {
   stop?: string[];
   top_k?: number;
 };
-
-/**
- * Response format configuration from the Orchestration template.
- * @internal
- */
-type SAPResponseFormat = Template["response_format"];
 
 /**
  * Type guard to check if a PromptTemplateRef is by ID.
@@ -292,15 +281,10 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
       includeReasoning: sapOptions?.includeReasoning ?? orchSettings.includeReasoning ?? false,
     });
 
+    // Handle tools: settings.tools take precedence if options.tools is empty
     let tools: ChatCompletionTool[] | undefined;
-
     const settingsTools = orchSettings.tools;
     const optionsTools = options.tools;
-
-    const shouldUseSettingsTools =
-      settingsTools && settingsTools.length > 0 && (!optionsTools || optionsTools.length === 0);
-
-    const shouldUseOptionsTools = !!(optionsTools && optionsTools.length > 0);
 
     if (settingsTools && settingsTools.length > 0 && optionsTools && optionsTools.length > 0) {
       warnings.push({
@@ -310,93 +294,36 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
       });
     }
 
-    if (shouldUseSettingsTools) {
+    if (settingsTools && settingsTools.length > 0 && (!optionsTools || optionsTools.length === 0)) {
+      // Use pre-configured tools from settings
       tools = settingsTools;
-    } else {
-      const availableTools = shouldUseOptionsTools ? optionsTools : undefined;
-
-      tools = availableTools
-        ?.map((tool): ChatCompletionTool | null => {
-          if (tool.type === "function") {
-            const { parameters, warning } = extractToolParameters(tool);
-            if (warning) {
-              warnings.push(warning);
-            }
-
-            return {
-              function: {
-                name: tool.name,
-                parameters,
-                ...(tool.description ? { description: tool.description } : {}),
-              },
-              type: "function",
-            };
-          } else {
-            warnings.push({
-              details: "Only 'function' tool type is supported.",
-              feature: `tool type for ${tool.name}`,
-              type: "unsupported",
-            });
-            return null;
-          }
-        })
-        .filter((t): t is ChatCompletionTool => t !== null);
+    } else if (optionsTools && optionsTools.length > 0) {
+      // Convert AI SDK tools to SAP format using shared helper
+      const toolsResult = convertToolsToSAPFormat<ChatCompletionTool>(optionsTools);
+      tools = toolsResult.tools;
+      warnings.push(...toolsResult.warnings);
     }
 
-    const modelParams: SAPModelParams = deepMerge(
-      orchSettings.modelParams ?? {},
-      sapOptions?.modelParams ?? {},
-    );
-
-    applyParameterOverrides(
-      modelParams as Record<string, unknown>,
-      options as Record<string, unknown>,
-      sapOptions?.modelParams as Record<string, unknown> | undefined,
-      orchSettings.modelParams as Record<string, unknown> | undefined,
-      PARAM_MAPPINGS,
-    );
-
-    if (options.stopSequences && options.stopSequences.length > 0) {
-      modelParams.stop = options.stopSequences;
-    }
-
-    validateModelParamsWithWarnings(
-      {
-        frequencyPenalty: options.frequencyPenalty,
-        maxTokens: options.maxOutputTokens,
-        presencePenalty: options.presencePenalty,
-        temperature: options.temperature,
-        topP: options.topP,
-      },
-      warnings,
-    );
+    // Build model parameters using shared helper
+    const { modelParams: baseModelParams, warnings: paramWarnings } = buildModelParams({
+      options,
+      paramMappings: PARAM_MAPPINGS,
+      providerModelParams: sapOptions?.modelParams as Record<string, unknown> | undefined,
+      settingsModelParams: orchSettings.modelParams as Record<string, unknown> | undefined,
+    });
+    const modelParams = baseModelParams as SAPModelParams;
+    warnings.push(...paramWarnings);
 
     // Map Vercel AI SDK toolChoice to SAP Orchestration tool_choice
     const toolChoice = mapToolChoice(options.toolChoice);
 
-    let responseFormat: SAPResponseFormat | undefined;
-    if (options.responseFormat?.type === "json") {
-      responseFormat = options.responseFormat.schema
-        ? {
-            json_schema: {
-              description: options.responseFormat.description,
-              name: options.responseFormat.name ?? "response",
-              schema: options.responseFormat.schema as Record<string, unknown>,
-              strict: null,
-            },
-            type: "json_schema" as const,
-          }
-        : { type: "json_object" as const };
-    } else if (orchSettings.responseFormat) {
-      responseFormat = orchSettings.responseFormat as SAPResponseFormat;
-    }
-
-    if (responseFormat && responseFormat.type !== "text") {
-      warnings.push({
-        message:
-          "responseFormat JSON mode is forwarded to the underlying model; support and schema adherence depend on the model/deployment.",
-        type: "other",
-      });
+    // Convert response format using shared helper
+    const { responseFormat, warning: responseFormatWarning } = convertResponseFormat(
+      options.responseFormat,
+      orchSettings.responseFormat,
+    );
+    if (responseFormatWarning) {
+      warnings.push(responseFormatWarning);
     }
 
     // Determine prompt template reference: providerOptions override settings
@@ -487,6 +414,8 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
     placeholderValues?: Record<string, string>,
     toolChoice?: SAPToolChoice,
   ): Record<string, unknown> {
+    // Type assertion: SDK's OrchestrationModuleConfig type doesn't expose prompt.tools,
+    // prompt.response_format, or prompt.template_ref properties, but they are set in buildOrchestrationConfig
     const promptTemplating = orchestrationConfig.promptTemplating as ExtendedPromptTemplating;
 
     return {
