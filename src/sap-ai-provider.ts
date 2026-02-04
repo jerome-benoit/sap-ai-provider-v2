@@ -15,42 +15,22 @@ import {
   SAPAISettings,
 } from "./sap-ai-settings.js";
 
-/** Deployment configuration type used by the SAP AI SDK. */
+/** @internal */
 export type DeploymentConfig = DeploymentIdConfig | ResourceGroupConfig;
 
-/**
- * SAP AI Provider interface for creating and configuring SAP AI Core models.
- * Extends the Vercel AI SDK ProviderV3 interface with SAP-specific functionality.
- */
+/** SAP AI Provider interface extending Vercel AI SDK ProviderV3. */
 export interface SAPAIProvider extends ProviderV3 {
-  /** Creates a language model instance. */
   (modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModel;
-
-  /** Creates a language model instance (custom convenience method). */
   chat(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModel;
-
-  /** Creates an embedding model instance (custom convenience method). */
   embedding(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SAPAIEmbeddingModel;
-
-  /** Creates an embedding model instance (Vercel AI SDK ProviderV3 standard method). */
   embeddingModel(
     modelId: SAPAIEmbeddingModelId,
     settings?: SAPAIEmbeddingSettings,
   ): SAPAIEmbeddingModel;
-
-  /**
-   * Image model stub - always throws NoSuchModelError.
-   * SAP AI Core does not support image generation.
-   */
+  /** Always throws - SAP AI Core does not support image generation. */
   imageModel(modelId: string): never;
-
-  /** Creates a language model instance (Vercel AI SDK ProviderV3 standard method). */
   languageModel(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageModel;
-
-  /**
-   * Creates a text embedding model instance.
-   * @deprecated Use `embeddingModel()` instead.
-   */
+  /** @deprecated Use `embeddingModel()` instead. */
   textEmbeddingModel(
     modelId: SAPAIEmbeddingModelId,
     settings?: SAPAIEmbeddingSettings,
@@ -135,7 +115,6 @@ export function createSAPAIProvider(options: SAPAIProviderSettings = {}): SAPAIP
     setGlobalLogLevel(logLevel);
   }
 
-  // Provider-level API setting (defaults to 'orchestration')
   const providerApi = options.api ?? "orchestration";
 
   const deploymentConfig: DeploymentConfig = options.deploymentId
@@ -146,7 +125,6 @@ export function createSAPAIProvider(options: SAPAIProviderSettings = {}): SAPAIP
     const mergedSettings: SAPAISettings = {
       ...options.defaultSettings,
       ...settings,
-      // Model-level api takes precedence over provider-level
       api: settings.api ?? options.defaultSettings?.api ?? providerApi,
       filtering: settings.filtering ?? options.defaultSettings?.filtering,
       masking: settings.masking ?? options.defaultSettings?.masking,
@@ -169,7 +147,6 @@ export function createSAPAIProvider(options: SAPAIProviderSettings = {}): SAPAIP
     modelId: SAPAIEmbeddingModelId,
     settings: SAPAIEmbeddingSettings = {},
   ): SAPAIEmbeddingModel => {
-    // Merge embedding settings with provider-level api
     const mergedSettings: SAPAIEmbeddingSettings = {
       ...settings,
       api: settings.api ?? providerApi,

@@ -1,8 +1,5 @@
 /**
  * Shared utilities for SAP AI Core strategy implementations.
- *
- * Contains common functions used by both Orchestration and Foundation Models strategies
- * to avoid code duplication and ensure consistency.
  */
 import type {
   EmbeddingModelV3Embedding,
@@ -23,7 +20,6 @@ import { deepMerge } from "./deep-merge.js";
 import { validateModelParamsWithWarnings } from "./sap-ai-provider-options.js";
 
 /**
- * Vercel AI SDK tool choice type.
  * @internal
  */
 export type AISDKToolChoice =
@@ -33,78 +29,56 @@ export type AISDKToolChoice =
   | { type: "required" };
 
 /**
- * Base configuration for model deployment resolution.
- * Shared fields used by buildModelDeployment helper.
  * @internal
  */
 export interface BaseModelDeploymentConfig {
-  /** Deployment configuration (ID-based or resource group-based). */
   readonly deploymentConfig: DeploymentIdConfig | ResourceGroupConfig;
-  /** The model identifier (e.g., 'gpt-4o', 'text-embedding-ada-002'). */
   readonly modelId: string;
 }
 
 /**
- * Configuration for building model parameters.
  * @internal
  */
 export interface BuildModelParamsConfig {
-  /** AI SDK call options. */
   readonly options: LanguageModelV3CallOptions;
-  /** Parameter mappings for the strategy. */
   readonly paramMappings: readonly ParamMapping[];
-  /** Provider options model params. */
   readonly providerModelParams?: Record<string, unknown>;
-  /** Settings model params. */
   readonly settingsModelParams?: Record<string, unknown>;
 }
 
 /**
- * Result of building model parameters.
  * @internal
  */
 export interface BuildModelParamsResult {
-  /** The merged and validated model parameters. */
   readonly modelParams: Record<string, unknown>;
-  /** Validation warnings. */
   readonly warnings: SharedV3Warning[];
 }
 
 /**
- * Result of converting AI SDK response format to SAP format.
  * @internal
  */
 export interface ConvertedResponseFormatResult {
-  /** The converted response format, or undefined if not applicable. */
   readonly responseFormat: SAPResponseFormat | undefined;
-  /** Warning about JSON mode support, if applicable. */
   readonly warning: SharedV3Warning | undefined;
 }
 
 /**
- * Result of converting AI SDK tools to SAP format.
  * @internal
  */
 export interface ConvertedToolsResult<T> {
-  /** The converted tools array, or undefined if no tools. */
   readonly tools: T[] | undefined;
-  /** Warnings generated during conversion. */
   readonly warnings: SharedV3Warning[];
 }
 
 /**
- * Result of extracting tool parameters from an AI SDK tool.
  * @internal
  */
 export interface ExtractedToolParameters {
-  /** The extracted SAP-compatible parameters. */
   readonly parameters: SAPToolParameters;
-  /** Optional warning if schema conversion failed. */
   readonly warning?: SharedV3Warning;
 }
 
 /**
- * Extended function tool interface with optional parameters property.
  * @internal
  */
 export interface FunctionToolWithParameters extends LanguageModelV3FunctionTool {
@@ -112,46 +86,29 @@ export interface FunctionToolWithParameters extends LanguageModelV3FunctionTool 
 }
 
 /**
- * Configuration for building a LanguageModelV3GenerateResult.
  * @internal
  */
 export interface GenerateResultConfig {
-  /** Model identifier (e.g., 'gpt-4o'). */
   readonly modelId: string;
-  /** Provider name for providerMetadata key. */
   readonly providerName: string;
-  /** Original request body for response.request.body. */
   readonly requestBody: unknown;
-  /** SDK response object with accessor methods. */
   readonly response: SDKResponse;
-  /** Normalized response headers. */
   readonly responseHeaders: Record<string, string> | undefined;
-  /** Provider version string for metadata. */
   readonly version: string;
-  /** Warnings from request building. */
   readonly warnings: SharedV3Warning[];
 }
 
 /**
  * Parameter mapping for AI SDK options → SAP model params.
- *
- * Used to map between different parameter naming conventions:
- * - AI SDK uses camelCase (e.g., `maxOutputTokens`)
- * - SAP APIs use snake_case (e.g., `max_tokens`)
  * @internal
  */
 export interface ParamMapping {
-  /** camelCase key in modelParams to read from and remove (e.g., 'maxTokens', 'topP'). */
   readonly camelCaseKey?: string;
-  /** AI SDK option key (e.g., 'maxOutputTokens', 'topP'). */
   readonly optionKey?: string;
-  /** Output key for SAP API (e.g., 'max_tokens', 'top_p'). */
   readonly outputKey: string;
 }
 
 /**
- * SAP-compatible response format type.
- * Used by both Orchestration and Foundation Models APIs.
  * @internal
  */
 export type SAPResponseFormat =
@@ -168,9 +125,6 @@ export type SAPResponseFormat =
   | { type: "text" };
 
 /**
- * SAP-compatible tool definition.
- * Common structure used by both APIs.
- * Uses generic parameter type to accommodate different SDK types.
  * @internal
  */
 export interface SAPTool<P = SAPToolParameters> {
@@ -183,8 +137,6 @@ export interface SAPTool<P = SAPToolParameters> {
 }
 
 /**
- * SAP Foundation Models SDK tool_choice type.
- * Matches AzureOpenAiChatCompletionToolChoiceOption from `@sap-ai-sdk/foundation-models`.
  * @internal
  */
 export type SAPToolChoice =
@@ -194,8 +146,6 @@ export type SAPToolChoice =
   | { function: { name: string }; type: "function" };
 
 /**
- * SAP-compatible tool parameters structure.
- * Must have type "object" as required by the SAP AI APIs.
  * @internal
  */
 export type SAPToolParameters = Record<string, unknown> & {
@@ -203,18 +153,12 @@ export type SAPToolParameters = Record<string, unknown> & {
 };
 
 /**
- * Common interface for SDK response objects (duck-typed).
- * Implemented by OrchestrationResponse and AzureOpenAiChatCompletionResponse.
  * @internal
  */
 export interface SDKResponse {
-  /** Returns text content. */
   getContent(): null | string | undefined;
-  /** Returns finish reason string. */
   getFinishReason(): null | string | undefined;
-  /** Returns token usage statistics. */
   getTokenUsage(): undefined | { completion_tokens?: number; prompt_tokens?: number };
-  /** Returns tool calls array if present. */
   getToolCalls():
     | null
     | undefined
@@ -222,21 +166,15 @@ export interface SDKResponse {
         function: { arguments: string; name: string };
         id: string;
       }[];
-  /** Raw HTTP response with headers. */
   rawResponse: { headers: Headers | Record<string, string> };
 }
 
 /**
- * Interface for SDK stream chunks.
- * Both Orchestration and Foundation Models SDK chunks implement these methods.
  * @internal
  */
 export interface SDKStreamChunk {
-  /** Internal data for raw chunk emission. */
   _data?: unknown;
-  /** Get the text content delta. */
   getDeltaContent(): null | string | undefined;
-  /** Get the tool call deltas. */
   getDeltaToolCalls():
     | null
     | undefined
@@ -245,22 +183,16 @@ export interface SDKStreamChunk {
         id?: string;
         index?: number;
       }[];
-  /** Get the finish reason if present in this chunk. */
   getFinishReason(): null | string | undefined;
 }
 
 /**
- * State object for tracking streaming response processing.
  * @internal
  */
 export interface StreamState {
-  /** Whether a text block is currently active. */
   activeText: boolean;
-  /** The finish reason for the response. */
   finishReason: LanguageModelV3FinishReason;
-  /** Whether this is the first chunk in the stream. */
   isFirstChunk: boolean;
-  /** Token usage tracking. */
   usage: {
     inputTokens: {
       cacheRead: number | undefined;
@@ -277,88 +209,56 @@ export interface StreamState {
 }
 
 /**
- * Configuration for creating a stream transformer.
  * @internal
  */
 export interface StreamTransformerConfig {
-  /** Function to convert errors to AI SDK format. */
   readonly convertToAISDKError: (
     error: unknown,
     context: { operation: string; requestBody: unknown; url: string },
   ) => unknown;
-  /** The ID generator for creating unique IDs. */
   readonly idGenerator: StreamIdGenerator;
-  /** Whether to include raw chunks in the output. */
   readonly includeRawChunks: boolean;
-  /** The model identifier. */
   readonly modelId: string;
-  /** The AI SDK call options (for error context). */
   readonly options: LanguageModelV3CallOptions;
-  /** The provider name for metadata. */
   readonly providerName: string;
-  /** The pre-generated response ID. */
   readonly responseId: string;
-  /** The SDK stream to transform. */
   readonly sdkStream: AsyncIterable<SDKStreamChunk>;
-  /** Function to get the final finish reason from the stream response. */
   readonly streamResponseGetFinishReason: () => null | string | undefined;
-  /** Function to get the final token usage from the stream response. */
   readonly streamResponseGetTokenUsage: () =>
     | null
     | undefined
     | { completion_tokens?: number; prompt_tokens?: number };
-  /** The URL identifier for error context. */
   readonly url: string;
-  /** The provider version string for metadata. */
   readonly version: string;
-  /** Warnings to include in the stream-start event. */
   readonly warnings: readonly SharedV3Warning[];
 }
 
 /**
- * Represents a tool call being accumulated during streaming.
  * @internal
  */
 export interface ToolCallInProgress {
-  /** Accumulated JSON arguments string. */
   arguments: string;
-  /** Whether the tool-call event has been emitted. */
   didEmitCall: boolean;
-  /** Whether the tool-input-start event has been emitted. */
   didEmitInputStart: boolean;
-  /** The tool call identifier. */
   id: string;
-  /** The name of the tool being called. */
   toolName?: string;
 }
 
 /**
- * AI SDK tool interface for conversion to SAP format.
- *
- * Represents the common structure of tools from Vercel AI SDK that can be
- * converted to SAP-compatible format. Only 'function' type tools are supported.
  * @internal
  */
 interface AISDKTool {
-  /** Optional tool description. */
   description?: string;
-  /** JSON Schema for tool input parameters. */
   inputSchema?: unknown;
-  /** Tool name identifier. */
   name: string;
-  /** Tool type (only 'function' is supported). */
   type: string;
 }
 
 /**
- * Generates unique IDs for streaming response parts.
- *
- * Uses crypto.randomUUID() for cryptographically secure unique identifiers.
  * @internal
  */
 export class StreamIdGenerator {
   /**
-   * Generates a unique response ID.
    * @returns A UUID string for identifying the response.
    */
   generateResponseId(): string {
@@ -366,7 +266,6 @@ export class StreamIdGenerator {
   }
 
   /**
-   * Generates a unique text block ID.
    * @returns A UUID string for identifying a text block.
    */
   generateTextBlockId(): string {
@@ -474,10 +373,6 @@ export function buildGenerateResult(config: GenerateResultConfig): LanguageModel
 
 /**
  * Builds a ModelDeployment object for the Foundation Models API SDK.
- *
- * Supports both deployment resolution strategies:
- * - Direct deploymentId: Uses the specific deployment directly
- * - Model-based: Uses modelName with optional modelVersion and resourceGroup
  * @param config - The strategy configuration containing deployment info and model ID.
  * @param modelVersion - Optional model version for model-based resolution.
  * @returns A ModelDeployment object for the Foundation Models API SDK.
@@ -489,12 +384,10 @@ export function buildModelDeployment(
 ): { deploymentId: string } | { modelName: string; modelVersion?: string; resourceGroup?: string } {
   const deploymentConfig = config.deploymentConfig;
 
-  // Use deploymentId directly if provided
   if ("deploymentId" in deploymentConfig) {
     return { deploymentId: deploymentConfig.deploymentId };
   }
 
-  // Build model-based deployment with optional version and resourceGroup
   const resourceGroup =
     "resourceGroup" in deploymentConfig ? deploymentConfig.resourceGroup : undefined;
 
@@ -507,9 +400,6 @@ export function buildModelDeployment(
 
 /**
  * Builds and validates model parameters from multiple sources.
- *
- * Merges parameters from settings and provider options, applies AI SDK option overrides,
- * handles stop sequences, and validates parameter ranges.
  * @param config - Configuration with options, mappings, and source parameters.
  * @returns The merged model parameters and validation warnings.
  * @internal
@@ -518,13 +408,11 @@ export function buildModelParams(config: BuildModelParamsConfig): BuildModelPara
   const { options, paramMappings, providerModelParams, settingsModelParams } = config;
   const warnings: SharedV3Warning[] = [];
 
-  // Deep merge settings and provider options
   const modelParams: Record<string, unknown> = deepMerge(
     settingsModelParams ?? {},
     providerModelParams ?? {},
   );
 
-  // Apply parameter overrides from AI SDK options
   applyParameterOverrides(
     modelParams,
     options as Record<string, unknown>,
@@ -533,12 +421,10 @@ export function buildModelParams(config: BuildModelParamsConfig): BuildModelPara
     paramMappings,
   );
 
-  // Handle stop sequences
   if (options.stopSequences && options.stopSequences.length > 0) {
     modelParams.stop = options.stopSequences;
   }
 
-  // Validate parameter ranges
   validateModelParamsWithWarnings(
     {
       frequencyPenalty: options.frequencyPenalty,
@@ -555,11 +441,6 @@ export function buildModelParams(config: BuildModelParamsConfig): BuildModelPara
 
 /**
  * Builds SAP AI SDK-compatible tool parameters from a JSON schema.
- *
- * Handles edge cases:
- * - Non-object schemas are converted to empty object schemas
- * - Preserves additional schema fields (description, etc.)
- * - Validates properties and required arrays
  * @param schema - The JSON schema to convert.
  * @returns The SAP-compatible tool parameters object.
  * @internal
@@ -567,7 +448,6 @@ export function buildModelParams(config: BuildModelParamsConfig): BuildModelPara
 export function buildSAPToolParameters(schema: Record<string, unknown>): SAPToolParameters {
   const schemaType = schema.type;
 
-  // Non-object schemas are not supported - return empty object schema
   if (schemaType !== undefined && schemaType !== "object") {
     return {
       properties: {},
@@ -586,7 +466,6 @@ export function buildSAPToolParameters(schema: Record<string, unknown>): SAPTool
       ? schema.required
       : [];
 
-  // Preserve additional fields like description, additionalProperties, etc.
   const additionalFields = Object.fromEntries(
     Object.entries(schema).filter(
       ([key]) => key !== "type" && key !== "properties" && key !== "required",
@@ -603,10 +482,6 @@ export function buildSAPToolParameters(schema: Record<string, unknown>): SAPTool
 
 /**
  * Converts AI SDK response format to SAP-compatible format.
- *
- * Handles conversion of structured output schemas:
- * - `{ type: 'json', schema: ... }` → `{ type: 'json_schema', json_schema: ... }`
- * - `{ type: 'json' }` → `{ type: 'json_object' }`
  * @param optionsResponseFormat - The AI SDK response format from call options.
  * @param settingsResponseFormat - The fallback response format from settings.
  * @returns The converted response format and any warning.
@@ -648,12 +523,8 @@ export function convertResponseFormat(
 
 /**
  * Converts AI SDK tools to SAP-compatible tool format.
- *
- * This helper extracts the common tool conversion logic used by both
- * Orchestration and Foundation Models strategies.
  * @param tools - The AI SDK tools to convert.
  * @returns The converted tools and any warnings.
- * @template T - The specific SAP tool type (allows API-specific extensions).
  * @internal
  */
 export function convertToolsToSAPFormat<T extends SAPTool<unknown>>(
@@ -700,9 +571,6 @@ export function convertToolsToSAPFormat<T extends SAPTool<unknown>>(
 
 /**
  * Creates a summary of Vercel AI SDK request options for error context.
- *
- * Extracts key information without including sensitive prompt data.
- * Used for debugging and error reporting.
  * @param options - The language model call options to summarize.
  * @returns An object summarizing the request for debugging.
  * @internal
@@ -741,8 +609,6 @@ export function createAISDKRequestBodySummary(options: LanguageModelV3CallOption
 
 /**
  * Creates the initial stream state for processing streaming responses.
- *
- * Provides consistent initial state across both Orchestration and Foundation Models strategies.
  * @returns The initial stream state object.
  * @internal
  */
@@ -773,14 +639,6 @@ export function createInitialStreamState(): StreamState {
 /**
  * Creates a ReadableStream that transforms SAP AI SDK streaming responses
  * into Vercel AI SDK LanguageModelV3StreamPart events.
- *
- * This function encapsulates the common streaming logic used by both
- * Orchestration and Foundation Models strategies, handling:
- * - Stream lifecycle events (stream-start, response-metadata, finish)
- * - Text content streaming (text-start, text-delta, text-end)
- * - Tool call streaming (tool-input-start, tool-input-delta, tool-input-end, tool-call)
- * - Error handling and conversion to AI SDK errors
- * - Token usage extraction
  * @param config - The stream transformer configuration containing all dependencies.
  * @returns A ReadableStream of LanguageModelV3StreamPart events.
  * @internal
@@ -1069,11 +927,6 @@ export function extractResponseContent(response: SDKResponse): LanguageModelV3Co
 
 /**
  * Extracts SAP-compatible tool parameters from an AI SDK function tool.
- *
- * Handles multiple schema formats:
- * - Zod schemas (converted via z.toJSONSchema)
- * - JSON Schema objects with properties
- * - Empty/missing schemas (returns empty object schema)
  * @param tool - The AI SDK function tool to extract parameters from.
  * @returns The extracted parameters and optional warning.
  * @internal
@@ -1128,8 +981,6 @@ export function hasCallableParse(
 
 /**
  * Type guard for Zod schema objects.
- *
- * Detects Zod schemas by checking for the presence of `_def` and a callable `parse` method.
  * @param obj - The object to check.
  * @returns True if the object is a Zod schema.
  * @internal
@@ -1144,12 +995,6 @@ export function isZodSchema(obj: unknown): obj is ZodType {
 
 /**
  * Maps provider finish reasons to Vercel AI SDK LanguageModelV3FinishReason.
- *
- * Handles various finish reason formats from different model providers:
- * - OpenAI: "stop", "length", "tool_calls", "content_filter"
- * - Anthropic: "end_turn", "stop_sequence", "max_tokens"
- * - Amazon: "eos", "max_tokens_reached"
- * - Others: "error", "function_call", "tool_call"
  * @param reason - The raw finish reason string from the provider.
  * @returns The unified finish reason with both raw and unified representations.
  * @internal
@@ -1186,12 +1031,6 @@ export function mapFinishReason(reason: null | string | undefined): LanguageMode
 
 /**
  * Maps Vercel AI SDK toolChoice to SAP Foundation Models SDK tool_choice format.
- *
- * Mapping:
- * - `{ type: 'auto' }` → `'auto'`
- * - `{ type: 'none' }` → `'none'`
- * - `{ type: 'required' }` → `'required'`
- * - `{ type: 'tool', toolName: 'fn' }` → `{ type: 'function', function: { name: 'fn' } }`
  * @param toolChoice - The Vercel AI SDK tool choice.
  * @returns The SAP SDK tool_choice format, or undefined if no mapping needed.
  * @internal
@@ -1219,11 +1058,7 @@ export function mapToolChoice(toolChoice: AISDKToolChoice | undefined): SAPToolC
 }
 
 /**
- * Converts SAP AI SDK embedding (number[] or base64) to Vercel AI SDK format.
- *
- * Handles both formats that can be returned by embedding APIs:
- * - Direct number arrays (most common)
- * - Base64-encoded float32 arrays (for bandwidth efficiency)
+ * Converts SAP AI SDK embedding to Vercel AI SDK format.
  * @param embedding - The embedding as number array or base64 string.
  * @returns The normalized embedding as a number array.
  * @internal
@@ -1232,7 +1067,6 @@ export function normalizeEmbedding(embedding: number[] | string): EmbeddingModel
   if (Array.isArray(embedding)) {
     return embedding;
   }
-  // Base64-encoded float32 values
   const buffer = Buffer.from(embedding, "base64");
   const float32Array = new Float32Array(
     buffer.buffer,

@@ -1,9 +1,4 @@
-/**
- * Foundation Models Language Model Strategy - Implementation using `@sap-ai-sdk/foundation-models`.
- *
- * This strategy is stateless - it holds only a reference to the AzureOpenAiChatClient class.
- * All tenant-specific configuration flows through method parameters for security.
- */
+/** Foundation Models language model strategy using `@sap-ai-sdk/foundation-models`. */
 import type {
   LanguageModelV3CallOptions,
   LanguageModelV3GenerateResult,
@@ -41,8 +36,6 @@ import {
 import { VERSION } from "./version.js";
 
 /**
- * Parameter mappings for override resolution and camelCase conversion.
- * Foundation Models API supports additional parameters like logprobs, seed, stop, user.
  * @internal
  */
 const PARAM_MAPPINGS: readonly ParamMapping[] = [
@@ -65,40 +58,20 @@ const PARAM_MAPPINGS: readonly ParamMapping[] = [
 ] as const;
 
 /**
- * Type for the AzureOpenAiChatClient class constructor.
  * @internal
  */
 type AzureOpenAiChatClientClass = typeof AzureOpenAiChatClient;
 
 /**
- * Foundation Models Language Model Strategy.
- *
- * Implements language model operations using the SAP AI SDK Foundation Models API.
- * This class is stateless - it only holds a reference to the AzureOpenAiChatClient class.
  * @internal
  */
 export class FoundationModelsLanguageModelStrategy implements LanguageModelAPIStrategy {
   private readonly ClientClass: AzureOpenAiChatClientClass;
 
-  /**
-   * Creates a new FoundationModelsLanguageModelStrategy.
-   * @param ClientClass - The AzureOpenAiChatClient class from `@sap-ai-sdk/foundation-models`.
-   */
   constructor(ClientClass: AzureOpenAiChatClientClass) {
     this.ClientClass = ClientClass;
   }
 
-  /**
-   * Generates a single completion (non-streaming).
-   *
-   * Builds request parameters, converts messages, validates parameters,
-   * calls SAP AI SDK, and processes the response.
-   * @param config - The strategy configuration containing model and deployment info.
-   * @param settings - The language model settings.
-   * @param options - The call options including prompt and parameters.
-   * @returns The generation result with content, usage, and metadata.
-   * @throws {Error} When the SAP AI SDK request fails.
-   */
   async doGenerate(
     config: LanguageModelStrategyConfig,
     settings: SAPAIModelSettings,
@@ -132,17 +105,6 @@ export class FoundationModelsLanguageModelStrategy implements LanguageModelAPISt
     }
   }
 
-  /**
-   * Generates a streaming completion.
-   *
-   * Builds request parameters, creates streaming client, and transforms
-   * the stream with proper event handling (text blocks, tool calls, finish reason).
-   * @param config - The strategy configuration containing model and deployment info.
-   * @param settings - The language model settings.
-   * @param options - The call options including prompt and parameters.
-   * @returns The streaming result with async iterable stream and metadata.
-   * @throws {Error} When the SAP AI SDK streaming request fails.
-   */
   async doStream(
     config: LanguageModelStrategyConfig,
     settings: SAPAIModelSettings,
@@ -189,14 +151,6 @@ export class FoundationModelsLanguageModelStrategy implements LanguageModelAPISt
     }
   }
 
-  /**
-   * Builds the Azure OpenAI chat completion request from Vercel AI SDK call options.
-   * @param config - The strategy configuration containing model and deployment info.
-   * @param settings - The language model settings.
-   * @param options - The call options including prompt and parameters.
-   * @returns The request parameters and any warnings generated.
-   * @internal
-   */
   private async buildRequest(
     config: LanguageModelStrategyConfig,
     settings: SAPAIModelSettings,
@@ -221,12 +175,10 @@ export class FoundationModelsLanguageModelStrategy implements LanguageModelAPISt
       includeReasoning: sapOptions?.includeReasoning ?? fmSettings.includeReasoning ?? false,
     });
 
-    // Convert AI SDK tools to SAP format using shared helper
     const toolsResult = convertToolsToSAPFormat<AzureOpenAiChatCompletionTool>(options.tools);
     const tools = toolsResult.tools;
     warnings.push(...toolsResult.warnings);
 
-    // Build model parameters using shared helper
     const { modelParams, warnings: paramWarnings } = buildModelParams({
       options,
       paramMappings: PARAM_MAPPINGS,
@@ -235,10 +187,8 @@ export class FoundationModelsLanguageModelStrategy implements LanguageModelAPISt
     });
     warnings.push(...paramWarnings);
 
-    // Map Vercel AI SDK toolChoice to SAP Foundation Models tool_choice
     const toolChoice = mapToolChoice(options.toolChoice);
 
-    // Convert response format using shared helper
     const { responseFormat, warning: responseFormatWarning } = convertResponseFormat(
       options.responseFormat,
       fmSettings.responseFormat,
@@ -247,8 +197,6 @@ export class FoundationModelsLanguageModelStrategy implements LanguageModelAPISt
       warnings.push(responseFormatWarning);
     }
 
-    // Pass through all model params (known and unknown) to the API
-    // This allows users to send vendor-specific parameters
     const request: AzureOpenAiChatCompletionParameters = {
       messages: messages as AzureOpenAiChatCompletionParameters["messages"],
       ...modelParams,
@@ -268,13 +216,6 @@ export class FoundationModelsLanguageModelStrategy implements LanguageModelAPISt
     return { request, warnings };
   }
 
-  /**
-   * Creates an SAP AI SDK AzureOpenAiChatClient with the given configuration.
-   * @param config - The strategy configuration containing deployment info.
-   * @param modelVersion - Optional model version for deployment resolution.
-   * @returns A new AzureOpenAiChatClient instance.
-   * @internal
-   */
   private createClient(
     config: LanguageModelStrategyConfig,
     modelVersion?: string,

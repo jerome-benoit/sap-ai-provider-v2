@@ -1,9 +1,4 @@
-/**
- * Orchestration Language Model Strategy - Implementation using `@sap-ai-sdk/orchestration`.
- *
- * This strategy is stateless - it holds only a reference to the OrchestrationClient class.
- * All tenant-specific configuration flows through method parameters for security.
- */
+/** Orchestration language model strategy using `@sap-ai-sdk/orchestration`. */
 import type {
   LanguageModelV3CallOptions,
   LanguageModelV3GenerateResult,
@@ -48,8 +43,6 @@ import {
 import { VERSION } from "./version.js";
 
 /**
- * Extended prompt templating structure with tools and response_format.
- * The SAP SDK type doesn't expose these properties, but they are set when building the config.
  * @internal
  */
 interface ExtendedPromptTemplating {
@@ -62,8 +55,6 @@ interface ExtendedPromptTemplating {
 }
 
 /**
- * Extended model parameters for SAP Orchestration API.
- * Includes standard LLM parameters plus SAP-specific extensions.
  * @internal
  */
 type SAPModelParams = LlmModelParams & {
@@ -74,9 +65,8 @@ type SAPModelParams = LlmModelParams & {
 };
 
 /**
- * Type guard to check if a PromptTemplateRef is by ID.
- * @param ref - The template reference to check.
- * @returns True if the reference is by ID.
+ * @param ref - Prompt template reference.
+ * @returns True if template reference is by ID.
  * @internal
  */
 function isTemplateRefById(ref: PromptTemplateRef): ref is PromptTemplateRefByID {
@@ -84,7 +74,6 @@ function isTemplateRefById(ref: PromptTemplateRef): ref is PromptTemplateRefByID
 }
 
 /**
- * Parameter mappings for override resolution and camelCase conversion.
  * @internal
  */
 const PARAM_MAPPINGS: readonly ParamMapping[] = [
@@ -103,40 +92,20 @@ const PARAM_MAPPINGS: readonly ParamMapping[] = [
 ] as const;
 
 /**
- * Type for the OrchestrationClient class constructor.
  * @internal
  */
 type OrchestrationClientClass = typeof OrchestrationClient;
 
 /**
- * Orchestration Language Model Strategy.
- *
- * Implements language model operations using the SAP AI SDK Orchestration API.
- * This class is stateless - it only holds a reference to the OrchestrationClient class.
  * @internal
  */
 export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrategy {
   private readonly ClientClass: OrchestrationClientClass;
 
-  /**
-   * Creates a new OrchestrationLanguageModelStrategy.
-   * @param ClientClass - The OrchestrationClient class from `@sap-ai-sdk/orchestration`.
-   */
   constructor(ClientClass: OrchestrationClientClass) {
     this.ClientClass = ClientClass;
   }
 
-  /**
-   * Generates a single completion (non-streaming).
-   *
-   * Builds orchestration configuration, converts messages, validates parameters,
-   * calls SAP AI SDK, and processes the response.
-   * @param config - The language model strategy configuration.
-   * @param settings - The SAP AI model settings.
-   * @param options - The Vercel AI SDK language model call options.
-   * @returns A Promise resolving to the generation result.
-   * @throws {Error} When the SAP AI SDK request fails.
-   */
   async doGenerate(
     config: LanguageModelStrategyConfig,
     settings: SAPAIModelSettings,
@@ -178,17 +147,6 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
     }
   }
 
-  /**
-   * Generates a streaming completion.
-   *
-   * Builds orchestration configuration, creates streaming client, and transforms
-   * the stream with proper event handling (text blocks, tool calls, finish reason).
-   * @param config - The language model strategy configuration.
-   * @param settings - The SAP AI model settings.
-   * @param options - The Vercel AI SDK language model call options.
-   * @returns A Promise resolving to the streaming result.
-   * @throws {Error} When the SAP AI SDK streaming request fails.
-   */
   async doStream(
     config: LanguageModelStrategyConfig,
     settings: SAPAIModelSettings,
@@ -245,14 +203,6 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
     }
   }
 
-  /**
-   * Builds the SAP AI SDK orchestration configuration from Vercel AI SDK call options.
-   * @param config - The language model strategy configuration.
-   * @param settings - The SAP AI model settings.
-   * @param options - The Vercel AI SDK language model call options.
-   * @returns A Promise resolving to the messages, orchestration config, and warnings.
-   * @internal
-   */
   private async buildOrchestrationConfig(
     config: LanguageModelStrategyConfig,
     settings: SAPAIModelSettings,
@@ -281,7 +231,6 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
       includeReasoning: sapOptions?.includeReasoning ?? orchSettings.includeReasoning ?? false,
     });
 
-    // Handle tools: settings.tools take precedence if options.tools is empty
     let tools: ChatCompletionTool[] | undefined;
     const settingsTools = orchSettings.tools;
     const optionsTools = options.tools;
@@ -295,16 +244,13 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
     }
 
     if (settingsTools && settingsTools.length > 0 && (!optionsTools || optionsTools.length === 0)) {
-      // Use pre-configured tools from settings
       tools = settingsTools;
     } else if (optionsTools && optionsTools.length > 0) {
-      // Convert AI SDK tools to SAP format using shared helper
       const toolsResult = convertToolsToSAPFormat<ChatCompletionTool>(optionsTools);
       tools = toolsResult.tools;
       warnings.push(...toolsResult.warnings);
     }
 
-    // Build model parameters using shared helper
     const { modelParams: baseModelParams, warnings: paramWarnings } = buildModelParams({
       options,
       paramMappings: PARAM_MAPPINGS,
@@ -314,10 +260,8 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
     const modelParams = baseModelParams as SAPModelParams;
     warnings.push(...paramWarnings);
 
-    // Map Vercel AI SDK toolChoice to SAP Orchestration tool_choice
     const toolChoice = mapToolChoice(options.toolChoice);
 
-    // Convert response format using shared helper
     const { responseFormat, warning: responseFormatWarning } = convertResponseFormat(
       options.responseFormat,
       orchSettings.responseFormat,
@@ -326,12 +270,9 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
       warnings.push(responseFormatWarning);
     }
 
-    // Determine prompt template reference: providerOptions override settings
     const promptTemplateRef = sapOptions?.promptTemplateRef ?? orchSettings.promptTemplateRef;
 
-    // Build the prompt configuration - either using template_ref or inline template
-    // Note: We use type assertion because the SDK's Xor type doesn't allow
-    // additional properties like tools/response_format alongside template_ref
+    // Type assertion: SDK's Xor type doesn't allow tools/response_format alongside template_ref
     const promptConfig: Record<string, unknown> = promptTemplateRef
       ? {
           template_ref: isTemplateRefById(promptTemplateRef)
@@ -377,7 +318,6 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
         : {}),
     };
 
-    // Merge placeholderValues: providerOptions override settings
     const mergedPlaceholderValues =
       orchSettings.placeholderValues || sapOptions?.placeholderValues
         ? {
@@ -399,23 +339,13 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
     };
   }
 
-  /**
-   * Builds the request body for SAP AI SDK chat completion or streaming.
-   * @param messages - The chat messages to send.
-   * @param orchestrationConfig - The orchestration module configuration.
-   * @param placeholderValues - Optional placeholder values for template variables.
-   * @param toolChoice - Optional tool choice configuration.
-   * @returns The request body object for the SAP AI SDK.
-   * @internal
-   */
   private buildRequestBody(
     messages: ChatMessage[],
     orchestrationConfig: OrchestrationModuleConfig,
     placeholderValues?: Record<string, string>,
     toolChoice?: SAPToolChoice,
   ): Record<string, unknown> {
-    // Type assertion: SDK's OrchestrationModuleConfig type doesn't expose prompt.tools,
-    // prompt.response_format, or prompt.template_ref properties, but they are set in buildOrchestrationConfig
+    // Type assertion: SDK type doesn't expose prompt.tools/response_format/template_ref properties
     const promptTemplating = orchestrationConfig.promptTemplating as ExtendedPromptTemplating;
 
     return {
@@ -424,7 +354,6 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
         ...orchestrationConfig.promptTemplating.model,
       },
       ...(placeholderValues ? { placeholderValues } : {}),
-      // Include template_ref when using Prompt Registry reference
       ...(promptTemplating.prompt.template_ref
         ? { template_ref: promptTemplating.prompt.template_ref }
         : {}),
@@ -448,13 +377,6 @@ export class OrchestrationLanguageModelStrategy implements LanguageModelAPIStrat
     };
   }
 
-  /**
-   * Creates an SAP AI SDK OrchestrationClient with the given configuration.
-   * @param config - The language model strategy configuration.
-   * @param orchConfig - The orchestration module configuration.
-   * @returns A new OrchestrationClient instance.
-   * @internal
-   */
   private createClient(
     config: LanguageModelStrategyConfig,
     orchConfig: OrchestrationModuleConfig,
