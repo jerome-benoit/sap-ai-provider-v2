@@ -1,6 +1,6 @@
 # API Reference
 
-Complete API documentation for the SAP AI Core Provider.
+Complete API documentation for the SAP AI Provider.
 
 ## Terminology
 
@@ -15,7 +15,7 @@ consistently:
   content filtering, document grounding, and translation capabilities
 - **Foundation Models API** - SAP AI Core's direct model access API with
   additional parameters like `logprobs`, `seed`, and `logit_bias`
-- **SAP AI Core Provider** or **this provider** - This npm package
+- **SAP AI Provider** or **this provider** - This npm package
   (`@jerome-benoit/sap-ai-provider`)
 - **Tool calling** - The capability of models to invoke external functions
   (equivalent to "function calling")
@@ -107,7 +107,7 @@ consistently:
 
 ### `createSAPAIProvider(options?)`
 
-Creates an SAP AI Core provider instance.
+Creates an SAP AI Provider instance.
 
 **Signature:**
 
@@ -201,7 +201,7 @@ try {
 
 ### Supported Models
 
-The SAP AI Core Provider supports all models available through SAP AI Core
+The SAP AI Provider supports all models available through SAP AI Core
 via the `@sap-ai-sdk/orchestration` and `@sap-ai-sdk/foundation-models` packages.
 
 > **Note:** The models listed below are representative examples. Actual model
@@ -906,7 +906,7 @@ textEmbeddingModel(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSett
 #### `provider.languageModel(modelId, settings?)`
 
 ProviderV3-compliant method for creating language model instances. This is the
-standard way to create language models in AI SDK v4+.
+standard way to create language models in Vercel AI SDK.
 
 **Signature:**
 
@@ -934,7 +934,7 @@ const model2 = provider("gpt-4o", { modelParams: { temperature: 0.7 } });
 #### `provider.embeddingModel(modelId, settings?)`
 
 ProviderV3-compliant method for creating embedding model instances. This is the
-standard way to create embedding models in AI SDK v4+.
+standard way to create embedding models in Vercel AI SDK.
 
 **Signature:**
 
@@ -1072,7 +1072,7 @@ console.log(result.providerMetadata?.["sap-ai-core"]);
 
 ### API Comparison: Orchestration vs Foundation Models
 
-The SAP AI Core Provider supports two APIs. Use this feature matrix to choose
+The SAP AI Provider supports two APIs. Use this feature matrix to choose
 the right API for your use case.
 
 #### Feature Matrix
@@ -1153,7 +1153,7 @@ Model-specific configuration options.
 | Property                     | Type                     | Default | Description                                      |
 | ---------------------------- | ------------------------ | ------- | ------------------------------------------------ |
 | `modelVersion`               | `string`                 | -       | Specific model version                           |
-| `includeReasoning`           | `boolean`                | -       | Include reasoning parts in SAP prompt conversion |
+| `includeReasoning`           | `boolean`                | `false` | Include reasoning parts in SAP prompt conversion |
 | `escapeTemplatePlaceholders` | `boolean`                | `true`  | Escape template delimiters to prevent conflicts  |
 | `modelParams`                | `ModelParams`            | -       | Model generation parameters                      |
 | `masking`                    | `MaskingModule`          | -       | Data masking configuration (DPI)                 |

@@ -1,4 +1,4 @@
-# SAP AI Core Provider for Vercel AI SDK
+# SAP AI Provider for Vercel AI SDK
 
 [![npm](https://img.shields.io/npm/v/@jerome-benoit/sap-ai-provider/latest?label=npm&color=blue)](https://www.npmjs.com/package/@jerome-benoit/sap-ai-provider)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -749,7 +749,7 @@ instructions.**
 
 ## Important Note
 
-> **Third-Party Provider**: This SAP AI Core provider
+> **Third-Party Provider**: This SAP AI Provider
 > (`@jerome-benoit/sap-ai-provider`) is developed and maintained by jerome-benoit, not
 > by SAP SE. While it uses the official SAP AI SDK and integrates with SAP AI
 > Core services, it is not an official SAP product.

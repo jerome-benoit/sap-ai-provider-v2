@@ -4,7 +4,7 @@ alwaysApply: true
 
 # Project Structure Guide
 
-This repository provides an SAP AI Core provider compatible with the Vercel AI
+This repository provides an SAP AI Provider compatible with the Vercel AI
 SDK. Use these anchors to navigate the codebase quickly.
 
 ## Source Files
