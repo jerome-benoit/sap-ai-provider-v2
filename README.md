@@ -174,10 +174,7 @@ The provider supports two SAP AI Core APIs:
 [API Reference - Foundation Models API](./API_REFERENCE.md#api-comparison-orchestration-vs-foundation-models)
 
 ```typescript
-import {
-  createSAPAIProvider,
-  SAP_AI_PROVIDER_NAME,
-} from "@jerome-benoit/sap-ai-provider";
+import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai-provider";
 
 // Provider-level API selection
 const provider = createSAPAIProvider({
@@ -509,10 +506,7 @@ const dpiConfig = buildDpiMaskingProvider({
 
 ```typescript
 import "dotenv/config"; // Load environment variables
-import {
-  buildAzureContentSafetyFilter,
-  createSAPAIProvider,
-} from "@jerome-benoit/sap-ai-provider";
+import { buildAzureContentSafetyFilter, createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
 
 const provider = createSAPAIProvider({
   defaultSettings: {
@@ -605,10 +599,7 @@ Options are validated at runtime with Zod schemas.
 
 ```typescript
 import { generateText } from "ai";
-import {
-  createSAPAIProvider,
-  SAP_AI_PROVIDER_NAME,
-} from "@jerome-benoit/sap-ai-provider";
+import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai-provider";
 
 const provider = createSAPAIProvider();
 
