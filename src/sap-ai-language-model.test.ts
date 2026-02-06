@@ -4347,6 +4347,12 @@ describe("SAPAILanguageModel", () => {
     describe.each<APIType>(["orchestration", "foundation-models"])(
       "toolChoice support (%s API)",
       (api) => {
+        const getToolChoiceFromRequest = (
+          request: FMChatCompletionRequest | OrchestrationChatCompletionRequest,
+        ): unknown => {
+          return getModelParamFromRequest(api, request, "tool_choice");
+        };
+
         it.each([
           { expected: "auto", toolChoice: { type: "auto" as const } },
           { expected: "none", toolChoice: { type: "none" as const } },
@@ -4371,7 +4377,7 @@ describe("SAPAILanguageModel", () => {
           });
 
           const request = await getLastRequestForApi(api);
-          expect(request.tool_choice).toBe(expected);
+          expect(getToolChoiceFromRequest(request)).toBe(expected);
         });
 
         it("should pass tool_choice with specific function name in request", async () => {
@@ -4394,7 +4400,7 @@ describe("SAPAILanguageModel", () => {
           });
 
           const request = await getLastRequestForApi(api);
-          expect(request.tool_choice).toEqual({
+          expect(getToolChoiceFromRequest(request)).toEqual({
             function: { name: "test_tool" },
             type: "function",
           });
@@ -4419,7 +4425,7 @@ describe("SAPAILanguageModel", () => {
           });
 
           const request = await getLastRequestForApi(api);
-          expect(request).not.toHaveProperty("tool_choice");
+          expect(getToolChoiceFromRequest(request)).toBeUndefined();
         });
       },
     );
