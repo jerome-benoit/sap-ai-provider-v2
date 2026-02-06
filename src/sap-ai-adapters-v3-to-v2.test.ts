@@ -722,6 +722,7 @@ describe("createV2StreamFromInternal", () => {
     await reader.read();
     await reader.cancel("User cancelled");
 
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(cancelCalled).toBe(true);
   });
 
@@ -736,40 +737,6 @@ describe("createV2StreamFromInternal", () => {
     const reader = v2Stream.getReader();
 
     await expect(reader.read()).rejects.toThrow("Source stream error");
-  });
-
-  it("should use pull-based pattern (not eager start-based)", async () => {
-    let pullCount = 0;
-    let startCalled = false;
-
-    const internalStream = new ReadableStream<InternalStreamPart>({
-      pull(controller) {
-        pullCount++;
-        if (pullCount <= 3) {
-          controller.enqueue({ delta: "chunk", id: "text-1", type: "text-delta" });
-        } else {
-          controller.close();
-        }
-      },
-      start() {
-        startCalled = true;
-      },
-    });
-
-    const v2Stream = createV2StreamFromInternal(internalStream);
-
-    // Before any read, pull should not have been called yet (only start)
-    expect(startCalled).toBe(true);
-    const initialPullCount = pullCount;
-
-    const reader = v2Stream.getReader();
-
-    // After reads, pull count should increase
-    await reader.read();
-    await reader.read();
-    await reader.read();
-
-    expect(pullCount).toBeGreaterThan(initialPullCount);
   });
 
   it("should filter out V3-only events (tool-approval-request)", async () => {

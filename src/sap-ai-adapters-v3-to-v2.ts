@@ -316,9 +316,7 @@ export function convertWarningToV2(internalWarning: InternalWarning): LanguageMo
 }
 
 /**
- * Transforms internal stream to V2 ReadableStream with backpressure and cancellation support.
- *
- * Uses pull-based pattern; filters out V3-only events (e.g., `tool-approval-request`).
+ * Transforms internal stream to V2 ReadableStream.
  * @param internalStream - Internal ReadableStream to transform.
  * @returns V2-formatted ReadableStream.
  * @internal
@@ -326,33 +324,14 @@ export function convertWarningToV2(internalWarning: InternalWarning): LanguageMo
 export function createV2StreamFromInternal(
   internalStream: ReadableStream<InternalStreamPart>,
 ): ReadableStream<LanguageModelV2StreamPart> {
-  const reader = internalStream.getReader();
-
-  return new ReadableStream<LanguageModelV2StreamPart>({
-    cancel(reason) {
-      void reader.cancel(reason);
-    },
-
-    async pull(controller) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        while (true) {
-          const { done, value } = await reader.read();
-
-          if (done) {
-            controller.close();
-            return;
-          }
-
-          const converted = convertStreamPartToV2(value);
-          if (converted != null) {
-            controller.enqueue(converted);
-            return;
-          }
+  return internalStream.pipeThrough(
+    new TransformStream<InternalStreamPart, LanguageModelV2StreamPart>({
+      transform(chunk, controller) {
+        const converted = convertStreamPartToV2(chunk);
+        if (converted != null) {
+          controller.enqueue(converted);
         }
-      } catch (error) {
-        controller.error(error);
-      }
-    },
-  });
+      },
+    }),
+  );
 }
