@@ -418,6 +418,7 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
    * @param params.modelParams - LLM model parameters.
    * @param params.promptTemplateRef - Optional prompt template reference.
    * @param params.responseFormat - Optional response format specification.
+   * @param params.toolChoice - Optional tool choice specification.
    * @param params.tools - Optional tools for function calling.
    * @returns Orchestration module configuration.
    * @internal
