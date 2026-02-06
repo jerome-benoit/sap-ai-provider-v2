@@ -128,7 +128,13 @@ export class SAPAILanguageModel implements LanguageModelV3 {
     validateSettings({
       api: effectiveApi,
       invocationSettings: sapOptions
-        ? { api: sapOptions.api, escapeTemplatePlaceholders: sapOptions.escapeTemplatePlaceholders }
+        ? {
+            api: sapOptions.api,
+            escapeTemplatePlaceholders: sapOptions.escapeTemplatePlaceholders,
+            orchestrationConfigRef: sapOptions.orchestrationConfigRef,
+            placeholderValues: sapOptions.placeholderValues,
+            promptTemplateRef: sapOptions.promptTemplateRef,
+          }
         : undefined,
       modelApi: this.settings.api,
       modelSettings: this.settings,
@@ -159,7 +165,13 @@ export class SAPAILanguageModel implements LanguageModelV3 {
     validateSettings({
       api: effectiveApi,
       invocationSettings: sapOptions
-        ? { api: sapOptions.api, escapeTemplatePlaceholders: sapOptions.escapeTemplatePlaceholders }
+        ? {
+            api: sapOptions.api,
+            escapeTemplatePlaceholders: sapOptions.escapeTemplatePlaceholders,
+            orchestrationConfigRef: sapOptions.orchestrationConfigRef,
+            placeholderValues: sapOptions.placeholderValues,
+            promptTemplateRef: sapOptions.promptTemplateRef,
+          }
         : undefined,
       modelApi: this.settings.api,
       modelSettings: this.settings,
