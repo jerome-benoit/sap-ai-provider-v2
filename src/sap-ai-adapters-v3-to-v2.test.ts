@@ -566,15 +566,6 @@ describe("convertStreamPartToV2", () => {
     expect(convertStreamPartToV2(rawPart)).toEqual(rawPart);
   });
 
-  it("should passthrough unknown event types for forward compatibility", () => {
-    const unknownPart = { customField: "value", type: "unknown-future-type" };
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-    const v2Part = convertStreamPartToV2(unknownPart as any);
-
-    expect(v2Part).toEqual(unknownPart);
-  });
-
   it("should return null for V3-only tool-approval-request", () => {
     const v2Part = convertStreamPartToV2({
       approvalId: "approval-1",

@@ -247,9 +247,6 @@ export function convertStreamPartToV2(
           providerMetadata: convertProviderMetadataToV2(internalPart.providerMetadata),
         }),
       };
-
-    default:
-      return internalPart as LanguageModelV2StreamPart;
   }
 }
 
