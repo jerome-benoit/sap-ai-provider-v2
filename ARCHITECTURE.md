@@ -360,7 +360,7 @@ sequenceDiagram
 
     rect rgb(230, 240, 255)
         Note over App,SDK: 1. Application Layer
-        App->>SDK: generateText({<br/>  model: provider('gpt-4o'),<br/>  prompt: 'Hello'<br/>})
+        App->>SDK: generateText({<br/>  model: provider('gpt-4.1'),<br/>  prompt: 'Hello'<br/>})
         SDK->>SDK: Validate options
     end
 
@@ -443,7 +443,7 @@ sequenceDiagram
 
     rect rgb(230, 240, 255)
         Note over App,SDK: Stream Initiation
-        App->>SDK: streamText({<br/>  model: provider('gpt-4o'),<br/>  prompt: 'Write a story'<br/>})
+        App->>SDK: streamText({<br/>  model: provider('gpt-4.1'),<br/>  prompt: 'Write a story'<br/>})
         SDK->>Provider: doStream(options)
     end
 
@@ -534,7 +534,7 @@ The v2 API uses a modular configuration structure:
           tools: [ /* function definitions */ ]
         },
         model: {
-          name: "gpt-4o",
+          name: "gpt-4.1",
           version: "latest",
           params: {
             temperature: 0.7,
@@ -563,7 +563,7 @@ The v2 API uses a modular configuration structure:
       id: "chatcmpl-xxx",
       object: "chat.completion",
       created: 1234567890,
-      model: "gpt-4o-2024-08-06",
+      model: "gpt-4.1-2024-08-06",
       choices: [{
         index: 0,
         message: {
@@ -717,7 +717,7 @@ sequenceDiagram
 
     rect rgb(230, 240, 255)
         Note over App,SDK: 1. Initial Request with Tools
-        App->>SDK: generateText({<br/>  model: provider('gpt-4o'),<br/>  prompt: 'What is 5+3 and weather in Tokyo?',<br/>  tools: {<br/>    calculate: calculatorTool,<br/>    getWeather: weatherTool<br/>  }<br/>})
+        App->>SDK: generateText({<br/>  model: provider('gpt-4.1'),<br/>  prompt: 'What is 5+3 and weather in Tokyo?',<br/>  tools: {<br/>    calculate: calculatorTool,<br/>    getWeather: weatherTool<br/>  }<br/>})
     end
 
     rect rgb(255, 240, 230)
@@ -789,7 +789,7 @@ sequenceDiagram
 
     rect rgb(255, 240, 240)
         Note over App,Provider: 1. Request with Sensitive Data
-        App->>Provider: generateText({<br/>  model: provider('gpt-4o', {<br/>    masking: {<br/>      masking_providers: [{<br/>        type: "sap_data_privacy_integration",<br/>        method: "anonymization",<br/>        entities: [<br/>          {type: "profile-email"},<br/>          {type: "profile-person"}<br/>        ]<br/>      }]<br/>    }<br/>  }),<br/>  prompt: "Email john.doe@example.com<br/>          about order 1234-5678"<br/>})
+        App->>Provider: generateText({<br/>  model: provider('gpt-4.1', {<br/>    masking: {<br/>      masking_providers: [{<br/>        type: "sap_data_privacy_integration",<br/>        method: "anonymization",<br/>        entities: [<br/>          {type: "profile-email"},<br/>          {type: "profile-person"}<br/>        ]<br/>      }]<br/>    }<br/>  }),<br/>  prompt: "Email john.doe@example.com<br/>          about order 1234-5678"<br/>})
     end
 
     rect rgb(240, 255, 240)
@@ -985,8 +985,8 @@ mechanisms.
 
 Key types for model configuration:
 
-- **`SAPAIModelId`**: String union of supported models (e.g., "gpt-4o",
-  "anthropic--claude-3.5-sonnet", "gemini-1.5-pro") with flexibility for custom models
+- **`SAPAIModelId`**: String union of supported models (e.g., "gpt-4.1",
+  "anthropic--claude-4.5-sonnet", "gemini-2.5-pro") with flexibility for custom models
 - **`SAPAISettings`**: Interface with `modelVersion`, `modelParams` (maxTokens,
   temperature, topP, etc.), `safePrompt`, and `structuredOutputs` options
 
@@ -1237,7 +1237,7 @@ Call-time api > Model-time api > Provider-time api > Default ("orchestration")
 const provider = createSAPAIProvider({ api: "orchestration" });
 
 // Model-level override
-const model = provider("gpt-4o", { api: "foundation-models" });
+const model = provider("gpt-4.1", { api: "foundation-models" });
 
 // Call-level override (highest priority)
 const result = await generateText({

@@ -25,7 +25,7 @@ const HTTP_STATUS = {
  * Error thrown when attempting to switch APIs at invocation time with conflicting model settings.
  * @example
  * ```typescript
- * const model = provider("gpt-4o", { filtering: { ... } });
+ * const model = provider("gpt-4.1", { filtering: { ... } });
  *
  * await generateText({
  *   model,

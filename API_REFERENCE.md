@@ -28,9 +28,6 @@ consistently:
   - [`sapai`](#sapai)
 - [Models](#models)
   - [Supported Models](#supported-models)
-  - [Model Capabilities Comparison](#model-capabilities-comparison)
-  - [Model Selection Guide by Use Case](#model-selection-guide-by-use-case)
-  - [Performance vs Quality Trade-offs](#performance-vs-quality-trade-offs)
 - [Tool Calling (Function Calling)](#tool-calling-function-calling)
   - [Overview](#overview)
   - [Basic Tool Calling Example](#basic-tool-calling-example)
@@ -133,7 +130,7 @@ const provider = createSAPAIProvider({
   deploymentId: "d65d81e7c077e583",
 });
 
-const model = provider("gpt-4o");
+const model = provider("gpt-4.1");
 ```
 
 ---
@@ -168,7 +165,7 @@ import { APICallError } from "@ai-sdk/provider";
 try {
   // Use directly without creating a provider
   const result = await generateText({
-    model: sapai("gpt-4o"),
+    model: sapai("gpt-4.1"),
     prompt: "Explain quantum computing",
   });
 
@@ -205,144 +202,41 @@ try {
 The SAP AI Provider supports all models available through SAP AI Core
 via the `@sap-ai-sdk/orchestration` and `@sap-ai-sdk/foundation-models` packages.
 
-> **Note:** The models listed below are representative examples. Actual model
-> availability depends on your SAP AI Core tenant configuration, region, and
-> subscription. Refer to your SAP AI Core configuration or the
-> [SAP AI Core documentation](https://help.sap.com/docs/ai-core) for the
-> definitive list of models available in your environment.
+**Supported Providers:**
 
-**About Model Availability:**
+- **OpenAI** (via Azure) - GPT-4o, o-series reasoning models
+- **Anthropic Claude** (via AWS Bedrock) - Claude 3.x, 4.x models
+- **Google Gemini** (via GCP Vertex AI) - Gemini 2.x models
+- **Amazon Nova** (via AWS Bedrock) - Nova models
+- **Mistral AI**, **Cohere**, **SAP** (ABAP, RPT)
 
-This library re-exports the `ChatModel` type from `@sap-ai-sdk/orchestration`,
-which is dynamically maintained by SAP AI SDK. The actual list of available
-models depends on:
-
-- Your SAP AI Core tenant configuration
-- Your region and subscription
-- Currently deployed models in your environment
-
-**Representative Model Examples** (non-exhaustive):
-
-**OpenAI (Azure):**
-
-- `gpt-4o`, `gpt-4o-mini` - Latest GPT-4 with vision & tools (recommended)
-- `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano` - Latest GPT-4 variants
-- `o1`, `o3`, `o3-mini`, `o4-mini` - Reasoning models
-
-**Google Vertex AI:**
-
-- `gemini-2.0-flash`, `gemini-2.0-flash-lite` - Fast inference
-- `gemini-2.5-flash`, `gemini-2.5-pro` - Latest Gemini
-- ⚠️ Gemini models have [tool calling limitations](#model-specific-tool-limitations)
-
-**Anthropic (AWS Bedrock):**
-
-- `anthropic--claude-3.5-sonnet`, `anthropic--claude-3.7-sonnet` - Enhanced
-  Claude 3
-- `anthropic--claude-4-sonnet`, `anthropic--claude-4-opus` - Latest Claude 4
-
-**Amazon Bedrock:**
-
-- `amazon--nova-pro`, `amazon--nova-lite`, `amazon--nova-micro`,
-  `amazon--nova-premier`
-
-**Open Source (AI Core):**
-
-- `mistralai--mistral-large-instruct`, `mistralai--mistral-small-instruct`
-- `meta--llama3.1-70b-instruct`
-- `cohere--command-a-reasoning`
+> **Note:** Model availability depends on your SAP AI Core tenant configuration,
+> region, and subscription. The model ID you pass to `provider("model-name")`
+> can be any model available in your environment.
 
 **Discovering Available Models:**
 
-To list models available in your SAP AI Core tenant:
-
 ```bash
-# Get access token
-export TOKEN=$(curl -X POST "https://<AUTH_URL>/oauth/token" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=<CLIENT_ID>" \
-  -d "client_secret=<CLIENT_SECRET>" | jq -r '.access_token')
-
-# List deployments
+# List deployments in your tenant
 curl "https://<AI_API_URL>/v2/lm/deployments" \
   -H "Authorization: Bearer $TOKEN" \
-  -H "AI-Resource-Group: default" | jq '.resources[].details.resources.backend_details.model.name'
+  -H "AI-Resource-Group: default"
 ```
 
-Or use **SAP AI Launchpad UI**:
-
-1. Navigate to ML Operations → Deployments
-2. Filter by "Orchestration" scenario
-3. View available model configurations
+Or use **SAP AI Launchpad** → ML Operations → Deployments.
 
 **See Also:**
 
 - [SAP AI Core Models Documentation](https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/models-and-scenarios)
-- [Model Capabilities Comparison](#model-capabilities-comparison) (below)
+- Provider documentation: [OpenAI](https://platform.openai.com/docs/models),
+  [Anthropic](https://docs.anthropic.com/en/docs/about-claude/models),
+  [Google](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models),
+  [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html)
 
-**⚠️ Important Model Limitations:**
+**⚠️ Model Limitations:**
 
 - **Amazon models**: Do not support the `n` parameter (number of completions).
-- **Tool calling**: See [Model-Specific Tool Limitations](#model-specific-tool-limitations)
-  for complete capabilities comparison by model.
-
-### Model Capabilities Comparison
-
-Quick reference for choosing the right model for your use case:
-
-| Model Family    | Tool Calling | Vision | Streaming | Max Tools  | Max Tokens | Notes                           |
-| --------------- | ------------ | ------ | --------- | ---------- | ---------- | ------------------------------- |
-| **GPT-4o**      | ✅           | ✅     | ✅        | Unlimited  | 16,384     | **Recommended** - Full features |
-| **GPT-4o-mini** | ✅           | ✅     | ✅        | Unlimited  | 16,384     | Fast, cost-effective            |
-| **GPT-4.1**     | ✅           | ✅     | ✅        | Unlimited  | 16,384     | Latest GPT-4                    |
-| **Gemini 2.0**  | ⚠️           | ✅     | ✅        | **1 only** | 32,768     | Tool limitation                 |
-| **Gemini 1.5**  | ⚠️           | ✅     | ✅        | **1 only** | 32,768     | Tool limitation                 |
-| **Claude 3.5**  | ✅           | ✅     | ✅        | Unlimited  | 8,192      | High quality                    |
-| **Claude 4**    | ✅           | ✅     | ✅        | Unlimited  | 8,192      | Latest Claude                   |
-| **Amazon Nova** | ✅           | ✅     | ✅        | Unlimited  | 8,192      | No `n` parameter support        |
-| **o1/o3**       | ⚠️           | ❌     | ✅        | Limited    | 16,384     | Reasoning models                |
-| **Llama 3.1**   | ✅           | ❌     | ✅        | Unlimited  | 8,192      | Open source                     |
-| **Mistral**     | ✅           | ⚠️     | ✅        | Unlimited  | 8,192      | Pixtral has vision              |
-
-**Legend:**
-
-- ✅ Fully supported
-- ⚠️ Limited support (see notes)
-- ❌ Not supported
-
-**Choosing a model:**
-
-- **Multiple tools required?** → Use GPT-4o, Claude, or Amazon Nova (avoid
-  Gemini)
-- **Vision needed?** → Use GPT-4o, Gemini, Claude, or Pixtral
-- **Cost-sensitive?** → Use GPT-4o-mini or Gemini Flash
-- **Maximum context?** → Use Gemini (32k tokens)
-- **Open source?** → Use Llama or Mistral
-
-### Model Selection Guide by Use Case
-
-Quick reference for selecting models based on your application requirements:
-
-| Use Case                      | Recommended Models                            | Avoid                         | Notes                                |
-| ----------------------------- | --------------------------------------------- | ----------------------------- | ------------------------------------ |
-| **Multi-tool applications**   | GPT-4o, GPT-4.1, Claude 3.5+, Amazon Nova     | Gemini (all versions)         | Gemini limited to 1 tool per request |
-| **Vision + multi-modal**      | GPT-4o, GPT-4.1, Gemini 2.0, Claude 3.5+      | Llama, o1/o3 reasoning models | Best image understanding             |
-| **Cost-effective production** | GPT-4o-mini, Gemini 2.0 Flash, Claude 3 Haiku | GPT-4.1, Claude 4 Opus        | Balance of quality and cost          |
-| **Long context (>8k tokens)** | Gemini 1.5/2.0 (32k), GPT-4o/4.1 (16k)        | Older GPT-4, Amazon models    | Check token limits                   |
-| **Reasoning-heavy tasks**     | o1, o3, Claude 4 Opus, GPT-4.1                | Fast/Mini variants            | Slower but higher quality            |
-| **Real-time streaming**       | GPT-4o-mini, Gemini Flash, Claude Haiku       | o1/o3 reasoning models        | Optimized for low latency            |
-| **Open-source/self-hosted**   | Llama 3.1, Mistral Large                      | Proprietary models            | Deployment flexibility               |
-| **Enterprise compliance**     | Amazon Nova, Claude 4, GPT-4.1                | Community models              | Better audit trails                  |
-
-### Performance vs Quality Trade-offs
-
-| Model Tier                                           | Speed    | Quality    | Cost     | Best For                         |
-| ---------------------------------------------------- | -------- | ---------- | -------- | -------------------------------- |
-| **Nano/Micro** (GPT-4.1-nano, Nova-micro)            | ⚡⚡⚡⚡ | ⭐⭐       | 💰       | Simple classification, keywords  |
-| **Mini/Lite** (GPT-4o-mini, Gemini Flash, Nova-lite) | ⚡⚡⚡   | ⭐⭐⭐     | 💰💰     | Production apps, chat, summaries |
-| **Standard** (GPT-4o, Claude 3.5, Gemini Pro)        | ⚡⚡     | ⭐⭐⭐⭐   | 💰💰💰   | Complex reasoning, analysis      |
-| **Premium** (Claude 4 Opus, GPT-4.1, o3)             | ⚡       | ⭐⭐⭐⭐⭐ | 💰💰💰💰 | Research, critical decisions     |
+- **Gemini models**: Have [tool calling limitations](#model-specific-tool-limitations).
 
 ---
 
@@ -373,7 +267,7 @@ import { z } from "zod";
 const provider = createSAPAIProvider();
 
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "What's the weather in Tokyo and 5+3?",
   tools: {
     getWeather: {
@@ -405,22 +299,15 @@ console.log(result.toolResults); // Array of tool results
 
 ### Model-Specific Tool Limitations
 
-⚠️ **Important:** Not all models support tool calling equally:
+⚠️ **Important:** Not all models support tool calling equally. Tool calling
+capabilities depend on the underlying model provider and may change over time.
 
-| Model Family   | Tool Support | Max Tools  | Parallel Calls | Notes                                   |
-| -------------- | ------------ | ---------- | -------------- | --------------------------------------- |
-| GPT-4o/4.1     | ✅ Full      | Unlimited  | ✅ Yes         | Recommended for multi-tool applications |
-| GPT-4o-mini    | ✅ Full      | Unlimited  | ✅ Yes         | Cost-effective with full tool support   |
-| Claude 3.5/4   | ✅ Full      | Unlimited  | ✅ Yes         | Excellent tool calling accuracy         |
-| Amazon Nova    | ✅ Full      | Unlimited  | ✅ Yes         | Full support across all Nova variants   |
-| **Gemini 1.5** | ⚠️ Limited   | **1 only** | ❌ No          | Single tool per request limitation      |
-| **Gemini 2.0** | ⚠️ Limited   | **1 only** | ❌ No          | Single tool per request limitation      |
-| Llama 3.1      | ✅ Full      | Unlimited  | ⚠️ Limited     | Varies by deployment                    |
-| Mistral        | ✅ Full      | Unlimited  | ✅ Yes         | Good tool calling support               |
-| o1/o3          | ⚠️ Limited   | Limited    | ❌ No          | Reasoning models have tool restrictions |
+Consult the official documentation for current tool calling support:
 
-**Key Takeaway:** For applications requiring multiple tools, use **GPT-4o**,
-**Claude**, or **Amazon Nova** models. Avoid Gemini for multi-tool scenarios.
+- [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
+- [Anthropic Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use)
+- [Google Vertex AI Function Calling](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling)
+- [Amazon Bedrock Tool Use](https://docs.aws.amazon.com/bedrock/latest/userguide/tool-use.html)
 
 ### Tool Definition Format
 
@@ -471,7 +358,7 @@ simultaneously:
 
 ```typescript
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "What's the weather in Tokyo, London, and Paris?",
   tools: { getWeather },
   modelParams: {
@@ -492,7 +379,7 @@ involved:
 
 ```typescript
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   messages: [
     { role: "user", content: "Book a flight to Paris" },
   ],
@@ -534,7 +421,7 @@ Handle tool execution errors gracefully:
 
 ```typescript
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "What's the weather?",
   tools: {
     getWeather: {
@@ -566,7 +453,7 @@ Tool calls work with streaming responses:
 
 ```typescript
 const result = await streamText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "Calculate 5+3 and tell me about it",
   tools: { calculator },
 });
@@ -584,7 +471,7 @@ Control when the model should use tools:
 
 ```typescript
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "What's 5+3?",
   tools: { calculator },
   toolChoice: "required", // Force tool usage
@@ -647,7 +534,7 @@ const provider = createSAPAIProvider();
 
 // Single embedding
 const { embedding } = await embed({
-  model: provider.embedding("text-embedding-ada-002"),
+  model: provider.embedding("text-embedding-3-small"),
   value: "What is machine learning?",
 });
 
@@ -692,7 +579,7 @@ Apply data masking to protect sensitive information before embedding generation
 ```typescript
 import { buildDpiMaskingProvider } from "@jerome-benoit/sap-ai-provider";
 
-const model = provider.embedding("text-embedding-ada-002", {
+const model = provider.embedding("text-embedding-3-small", {
   masking: {
     masking_providers: [
       buildDpiMaskingProvider({
@@ -763,7 +650,7 @@ async doEmbed(options: {
 **Example:**
 
 ```typescript
-const model = provider.embedding("text-embedding-ada-002");
+const model = provider.embedding("text-embedding-3-small");
 
 // Direct model usage (advanced)
 const result = await model.doEmbed({
@@ -805,16 +692,9 @@ Type for embedding model identifiers.
 export type SAPAIEmbeddingModelId = string;
 ```
 
-**Common Models:**
-
-| Model                    | Provider | Dimensions | Notes                    |
-| ------------------------ | -------- | ---------- | ------------------------ |
-| `text-embedding-ada-002` | OpenAI   | 1536       | Cost-effective, reliable |
-| `text-embedding-3-small` | OpenAI   | 1536       | Balanced performance     |
-| `text-embedding-3-large` | OpenAI   | 3072       | Highest quality          |
-
-> **Note:** Model availability depends on your SAP AI Core tenant configuration,
-> region, and subscription.
+> **Note:** Embedding model availability depends on your SAP AI Core tenant
+> configuration, region, and subscription. Common providers include OpenAI,
+> Amazon Titan, and NVIDIA. Consult your tenant for available embedding models.
 
 ---
 
@@ -842,13 +722,13 @@ Create a language model instance.
 
 **Parameters:**
 
-- `modelId`: Model identifier (e.g., 'gpt-4o', 'anthropic--claude-3.5-sonnet')
+- `modelId`: Model identifier (e.g., 'gpt-4.1', 'anthropic--claude-4.5-sonnet')
 - `settings`: Optional model configuration
 
 **Example:**
 
 ```typescript
-const model = provider("gpt-4o", {
+const model = provider("gpt-4.1", {
   modelParams: {
     temperature: 0.7,
     maxTokens: 2000,
@@ -879,7 +759,7 @@ embedding(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings): SA
 
 **Parameters:**
 
-- `modelId`: Embedding model identifier (e.g., 'text-embedding-ada-002')
+- `modelId`: Embedding model identifier (e.g., 'text-embedding-3-small')
 - `settings`: Optional embedding model configuration
 
 **Example:**
@@ -917,19 +797,19 @@ languageModel(modelId: SAPAIModelId, settings?: SAPAISettings): SAPAILanguageMod
 
 **Parameters:**
 
-- `modelId`: Model identifier (e.g., 'gpt-4o', 'anthropic--claude-3.5-sonnet')
+- `modelId`: Model identifier (e.g., 'gpt-4.1', 'anthropic--claude-4.5-sonnet')
 - `settings`: Optional model configuration
 
 **Example:**
 
 ```typescript
 // Using the V3 standard method
-const model = provider.languageModel("gpt-4o", {
+const model = provider.languageModel("gpt-4.1", {
   modelParams: { temperature: 0.7 },
 });
 
 // Equivalent to calling the provider directly
-const model2 = provider("gpt-4o", { modelParams: { temperature: 0.7 } });
+const model2 = provider("gpt-4.1", { modelParams: { temperature: 0.7 } });
 ```
 
 #### `provider.embeddingModel(modelId, settings?)`
@@ -945,7 +825,7 @@ embeddingModel(modelId: SAPAIEmbeddingModelId, settings?: SAPAIEmbeddingSettings
 
 **Parameters:**
 
-- `modelId`: Embedding model identifier (e.g., 'text-embedding-ada-002')
+- `modelId`: Embedding model identifier (e.g., 'text-embedding-3-small')
 - `settings`: Optional embedding model configuration
 
 **Example:**
@@ -1051,7 +931,7 @@ const provider = createSAPAIProvider({
 });
 
 // Provider identifier: "sap-ai-core.chat"
-const model = provider("gpt-4o");
+const model = provider("gpt-4.1");
 console.log(model.provider); // => "sap-ai-core.chat"
 
 // Use provider name in providerOptions
@@ -1127,7 +1007,7 @@ import { generateText } from "ai";
 const provider = createSAPAIProvider({ api: "foundation-models" });
 
 // Model-level: override for specific model
-const model = provider("gpt-4o", { api: "orchestration" });
+const model = provider("gpt-4.1", { api: "orchestration" });
 
 // Invocation-level: override per-call
 const result = await generateText({
@@ -1282,7 +1162,7 @@ import { generateText } from "ai";
 const provider = createSAPAIProvider({ api: "foundation-models" });
 
 const result = await generateText({
-  model: provider("gpt-4o", {
+  model: provider("gpt-4.1", {
     modelParams: {
       temperature: 0.7,
       maxTokens: 1000,
@@ -1407,7 +1287,7 @@ The default provider name constant. Use as key in `providerOptions` and `provide
 import { SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai-provider";
 
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "Hello",
   providerOptions: {
     [SAP_AI_PROVIDER_NAME]: {
@@ -1446,7 +1326,7 @@ import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai
 const provider = createSAPAIProvider();
 
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "Explain quantum computing",
   providerOptions: {
     [SAP_AI_PROVIDER_NAME]: {
@@ -1482,7 +1362,7 @@ import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai
 const provider = createSAPAIProvider();
 
 const { embedding } = await embed({
-  model: provider.embedding("text-embedding-ada-002"),
+  model: provider.embedding("text-embedding-3-small"),
   value: "Search query text",
   providerOptions: {
     [SAP_AI_PROVIDER_NAME]: {
@@ -1537,7 +1417,7 @@ type SAPAILanguageModelProviderOptions = {
 
 ```typescript
 const { text } = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "What are the key benefits of this product?",
   providerOptions: {
     "sap-ai": {
@@ -1555,7 +1435,7 @@ const { text } = await generateText({
 ```typescript
 // When using grounding with orchestration templates
 const { text } = await generateText({
-  model: provider("gpt-4o", {
+  model: provider("gpt-4.1", {
     grounding: {
       // grounding configuration
     },
@@ -1577,7 +1457,7 @@ const { text } = await generateText({
 
 ```typescript
 // Default placeholders in settings, override per-request in providerOptions
-const model = provider("gpt-4o", {
+const model = provider("gpt-4.1", {
   escapeTemplatePlaceholders: false,
   placeholderValues: {
     product: "SAP Cloud SDK", // Default product
@@ -1712,12 +1592,12 @@ import { generateText } from "ai";
 const provider = createSAPAIProvider();
 
 // Reference by ID (simplest form)
-const modelById = provider("gpt-4o", {
+const modelById = provider("gpt-4.1", {
   promptTemplateRef: { id: "my-template-id" },
 });
 
 // Reference by ID with explicit scope
-const modelByIdWithScope = provider("gpt-4o", {
+const modelByIdWithScope = provider("gpt-4.1", {
   promptTemplateRef: {
     id: "my-template-id",
     scope: "resource_group",
@@ -1725,7 +1605,7 @@ const modelByIdWithScope = provider("gpt-4o", {
 });
 
 // Reference by scenario/name/version
-const modelByScenario = provider("gpt-4o", {
+const modelByScenario = provider("gpt-4.1", {
   promptTemplateRef: {
     scenario: "customer-support",
     name: "greeting-template",
@@ -1751,7 +1631,7 @@ Prompt Registry templates often contain placeholders. Use `placeholderValues` to
 provide values for these placeholders:
 
 ```typescript
-const model = provider("gpt-4o", {
+const model = provider("gpt-4.1", {
   promptTemplateRef: {
     scenario: "customer-support",
     name: "personalized-greeting",
@@ -1819,12 +1699,12 @@ import { generateText } from "ai";
 const provider = createSAPAIProvider();
 
 // Reference by ID (simplest form)
-const modelById = provider("gpt-4o", {
+const modelById = provider("gpt-4.1", {
   orchestrationConfigRef: { id: "my-config-id" },
 });
 
 // Reference by scenario/name/version
-const modelByScenario = provider("gpt-4o", {
+const modelByScenario = provider("gpt-4.1", {
   orchestrationConfigRef: {
     scenario: "customer-support",
     name: "standard-config",
@@ -1834,7 +1714,7 @@ const modelByScenario = provider("gpt-4o", {
 
 // Override via providerOptions at invocation time
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "Hello",
   providerOptions: {
     [SAP_AI_PROVIDER_NAME]: {
@@ -1850,7 +1730,7 @@ Stored orchestration configurations may contain template placeholders. Use
 `placeholderValues` to provide values for these placeholders:
 
 ```typescript
-const model = provider("gpt-4o", {
+const model = provider("gpt-4.1", {
   orchestrationConfigRef: {
     scenario: "customer-support",
     name: "personalized-config",
@@ -2268,7 +2148,7 @@ import { UnsupportedFeatureError } from "@jerome-benoit/sap-ai-provider";
 
 try {
   // Using filtering with Foundation Models API
-  const model = provider("gpt-4o", {
+  const model = provider("gpt-4.1", {
     api: "foundation-models",
     filtering: {
       /* ... */
@@ -2301,7 +2181,7 @@ Example:
 import { ApiSwitchError } from "@jerome-benoit/sap-ai-provider";
 
 // Model configured with Orchestration-only feature
-const model = provider("gpt-4o", {
+const model = provider("gpt-4.1", {
   filtering: {
     /* ... */
   },
@@ -2350,7 +2230,7 @@ import { APICallError, LoadAPIKeyError, NoSuchModelError } from "@ai-sdk/provide
 
 try {
   const result = await generateText({
-    model: provider("gpt-4o"),
+    model: provider("gpt-4.1"),
     prompt: "Hello",
   });
 } catch (error) {
@@ -2611,7 +2491,7 @@ import { createSAPAIProvider, getProviderName } from "@jerome-benoit/sap-ai-prov
 import { generateText } from "ai";
 
 const provider = createSAPAIProvider({ name: "my-sap" });
-const model = provider("gpt-4o");
+const model = provider("gpt-4.1");
 
 const result = await generateText({ model, prompt: "Hello" });
 
@@ -2635,7 +2515,7 @@ function resolveApi(providerApi: SAPAIApiType | undefined, modelApi: SAPAIApiTyp
 **Parameters:**
 
 - `providerApi`: API set at provider creation (`createSAPAIProvider({ api })`)
-- `modelApi`: API set at model creation (`provider("gpt-4o", { api })`)
+- `modelApi`: API set at model creation (`provider("gpt-4.1", { api })`)
 - `invocationApi`: API set at invocation (`providerOptions[SAP_AI_PROVIDER_NAME].api`)
 
 **Returns:** The resolved API type to use (highest precedence wins)
@@ -2893,7 +2773,7 @@ const provider = createSAPAIProvider({
 
 // Now queries will be grounded in your documents
 const { text } = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "What is SAP?",
   providerOptions: {
     "sap-ai": {
@@ -2959,7 +2839,7 @@ const provider = createSAPAIProvider({
 });
 
 // Now the model handles German input/output automatically
-const model = provider("gpt-4o");
+const model = provider("gpt-4.1");
 ```
 
 **Run it:** `npx tsx examples/example-translation.ts`
@@ -3001,7 +2881,7 @@ curly braces to prevent template injection:
 ```typescript
 const prompt = escapeOrchestrationPlaceholders(userProvidedContent);
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt,
 });
 ```
