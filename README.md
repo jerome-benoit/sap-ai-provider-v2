@@ -379,43 +379,24 @@ const { embeddings } = await embedMany({
 
 **Run it:** `npx tsx examples/example-embeddings.ts`
 
-**Common embedding models:**
-
-- `text-embedding-3-small` - OpenAI Ada v2 (cost-effective)
-- `text-embedding-3-small` - OpenAI v3 small (balanced)
-- `text-embedding-3-large` - OpenAI v3 large (highest quality)
-
-> **Note:** Model availability depends on your SAP AI Core tenant configuration.
+> **Note:** Embedding model availability depends on your SAP AI Core tenant
+> configuration. Common providers include OpenAI, Amazon Titan, and NVIDIA.
 
 For complete embedding API documentation, see
 **[API Reference: Embeddings](./API_REFERENCE.md#embeddings)**.
 
 ## Supported Models
 
-This provider supports all models available through SAP AI Core, including:
-
-**Popular models:**
-
-- **OpenAI**: gpt-4.1, gpt-4.1-mini, gpt-4.1, o1, o3, o4-mini (recommended for
-  multi-tool apps)
-- **Anthropic Claude**: anthropic--claude-4.5-sonnet, anthropic--claude-4-opus
-- **Google Gemini**: gemini-2.5-pro, gemini-2.0-flash
-
-- **Amazon Nova**: amazon--nova-pro, amazon--nova-lite
-- **Open Source**: mistralai--mistral-large-instruct,
-  meta--llama3.1-70b-instruct
+This provider supports all models available through SAP AI Core, including models
+from **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Amazon Nova**,
+**Mistral AI**, **Cohere**, and **SAP** (ABAP, RPT).
 
 > **Note:** Model availability depends on your SAP AI Core tenant configuration,
-> region, and subscription.
+> region, and subscription. Use `provider("model-name")` with any model ID
+> available in your environment.
 
-**To discover available models in your environment:**
-
-```bash
-curl "https://<AI_API_URL>/v2/lm/deployments" -H "Authorization: Bearer $TOKEN"
-```
-
-For complete model details, capabilities comparison, and limitations, see
-**[API Reference: SAPAIModelId](./API_REFERENCE.md#sapaimodelid)**.
+For details on discovering available models, see
+**[API Reference: Supported Models](./API_REFERENCE.md#supported-models)**.
 
 ## Advanced Features
 
