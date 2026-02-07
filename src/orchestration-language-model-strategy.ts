@@ -124,14 +124,17 @@ function isTemplateRefById(ref: PromptTemplateRef): ref is PromptTemplateRefByID
 }
 
 /**
+ * Module keys for orchestration configuration.
+ * @internal
+ */
+const ORCHESTRATION_MODULE_KEYS = ["masking", "filtering", "grounding", "translation"] as const;
+
+/**
  * Module settings that are ignored when using orchestrationConfigRef.
  * @internal
  */
 const CONFIG_REF_IGNORED_MODULES = [
-  "filtering",
-  "grounding",
-  "masking",
-  "translation",
+  ...ORCHESTRATION_MODULE_KEYS,
   "promptTemplateRef",
   "responseFormat",
   "tools",
@@ -145,6 +148,24 @@ const CONFIG_REF_IGNORED_MODULES = [
  * @internal
  */
 const CONFIG_REF_IGNORED_PROVIDER_OPTIONS = ["promptTemplateRef", "modelParams"] as const;
+
+/**
+ * Copies non-empty orchestration modules from source to target.
+ * @param target - Target object to copy modules into.
+ * @param source - Source object containing module configurations.
+ * @internal
+ */
+function copyOrchestrationModules(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): void {
+  for (const key of ORCHESTRATION_MODULE_KEYS) {
+    const value = source[key];
+    if (value && Object.keys(value as object).length > 0) {
+      target[key] = value;
+    }
+  }
+}
 
 /**
  * Checks if a value is a valid OrchestrationConfigRef.
@@ -385,7 +406,6 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
       ...this.collectConfigRefIgnoredWarnings(settings, options, commonParts.sapOptions),
     );
 
-    // Merge placeholder values (settings < providerOptions)
     const mergedPlaceholderValues = deepMerge(
       settings.placeholderValues as Record<string, unknown> | undefined,
       commonParts.sapOptions?.placeholderValues as Record<string, unknown> | undefined,
@@ -457,7 +477,7 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
       ? { ...modelParams, tool_choice: toolChoice }
       : modelParams;
 
-    return {
+    const moduleConfig: OrchestrationModuleConfig = {
       promptTemplating: {
         model: {
           name: config.modelId,
@@ -466,19 +486,14 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
         },
         prompt: promptConfig as OrchestrationModuleConfig["promptTemplating"]["prompt"],
       },
-      ...(settings.masking && Object.keys(settings.masking as object).length > 0
-        ? { masking: settings.masking }
-        : {}),
-      ...(settings.filtering && Object.keys(settings.filtering as object).length > 0
-        ? { filtering: settings.filtering }
-        : {}),
-      ...(settings.grounding && Object.keys(settings.grounding as object).length > 0
-        ? { grounding: settings.grounding }
-        : {}),
-      ...(settings.translation && Object.keys(settings.translation as object).length > 0
-        ? { translation: settings.translation }
-        : {}),
     };
+
+    copyOrchestrationModules(
+      moduleConfig as unknown as Record<string, unknown>,
+      settings as unknown as Record<string, unknown>,
+    );
+
+    return moduleConfig;
   }
 
   /**
@@ -504,7 +519,7 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
 
     // Note: tool_choice is passed via model.params (not request level) because the SDK
     // filters out request-level options. See: https://github.com/SAP/ai-sdk-js/issues/1500
-    return {
+    const requestBody: Record<string, unknown> = {
       ...messagesField,
       model: {
         ...orchestrationConfig.promptTemplating.model,
@@ -514,19 +529,14 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
       ...(promptTemplating.prompt.response_format
         ? { response_format: promptTemplating.prompt.response_format }
         : {}),
-      ...(orchestrationConfig.masking && Object.keys(orchestrationConfig.masking).length > 0
-        ? { masking: orchestrationConfig.masking }
-        : {}),
-      ...(orchestrationConfig.filtering && Object.keys(orchestrationConfig.filtering).length > 0
-        ? { filtering: orchestrationConfig.filtering }
-        : {}),
-      ...(orchestrationConfig.grounding && Object.keys(orchestrationConfig.grounding).length > 0
-        ? { grounding: orchestrationConfig.grounding }
-        : {}),
-      ...(orchestrationConfig.translation && Object.keys(orchestrationConfig.translation).length > 0
-        ? { translation: orchestrationConfig.translation }
-        : {}),
     };
+
+    copyOrchestrationModules(
+      requestBody,
+      orchestrationConfig as unknown as Record<string, unknown>,
+    );
+
+    return requestBody;
   }
 
   /**
@@ -548,7 +558,6 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
   ): { readonly request: OrchestrationRequest; readonly warnings: SharedV3Warning[] } {
     const tools = commonParts.sapOptions?.[RESOLVED_TOOLS_KEY] as ChatCompletionTool[] | undefined;
 
-    // Response format conversion
     const { responseFormat, warning: responseFormatWarning } = convertResponseFormat(
       options.responseFormat,
       settings.responseFormat,
@@ -571,7 +580,6 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
       tools,
     });
 
-    // Placeholder values merging (settings < providerOptions)
     const mergedPlaceholderValues = deepMerge(
       settings.placeholderValues as Record<string, unknown> | undefined,
       commonParts.sapOptions?.placeholderValues as Record<string, unknown> | undefined,
@@ -674,7 +682,6 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
     sapOptions: Record<string, unknown> | undefined,
     settings: OrchestrationModelSettings,
   ): OrchestrationConfigRef | undefined {
-    // Provider options take priority over settings
     const configRefCandidate =
       sapOptions?.orchestrationConfigRef ?? settings.orchestrationConfigRef;
 
@@ -744,7 +751,6 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
       return settingsTools;
     }
 
-    // Convert optionsTools from AI SDK format to SAP format
     if (optionsTools && optionsTools.length > 0) {
       const result = convertToolsToSAPFormat<ChatCompletionTool>(optionsTools as AISDKTool[]);
       warnings.push(...result.warnings);

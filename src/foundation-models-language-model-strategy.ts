@@ -74,13 +74,11 @@ export class FoundationModelsLanguageModelStrategy extends BaseLanguageModelStra
   } {
     const warnings: SharedV3Warning[] = [];
 
-    // Tools conversion (FM doesn't support settings.tools)
     const toolsResult = convertToolsToSAPFormat<AzureOpenAiChatCompletionTool>(
       options.tools as AISDKTool[] | undefined,
     );
     warnings.push(...toolsResult.warnings);
 
-    // Response format conversion
     const { responseFormat, warning: responseFormatWarning } = convertResponseFormat(
       options.responseFormat,
       settings.responseFormat,
