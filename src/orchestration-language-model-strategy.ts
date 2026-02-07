@@ -312,6 +312,42 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
     return this.buildStandardRequest(config, settings, options, commonParts, warnings);
   }
 
+  /**
+   * Collects stream-specific warnings for orchestration.
+   * @param settings - Model settings.
+   * @param sapOptions - Provider options.
+   * @returns Array of warnings for streaming operations.
+   * @internal
+   */
+  protected override collectStreamWarnings(
+    settings: OrchestrationModelSettings,
+    sapOptions?: Record<string, unknown>,
+  ): SharedV3Warning[] {
+    const warnings: SharedV3Warning[] = [];
+
+    // Skip warning if a valid orchestrationConfigRef is set in settings or providerOptions
+    // (local module settings are ignored when using server-side config)
+    const configRefCandidate =
+      sapOptions?.orchestrationConfigRef ?? settings.orchestrationConfigRef;
+    if (configRefCandidate && isOrchestrationConfigRef(configRefCandidate)) {
+      return warnings;
+    }
+
+    if (settings.translation && hasKeys(settings.translation)) {
+      if (!settings.streamOptions?.delimiters || settings.streamOptions.delimiters.length === 0) {
+        warnings.push({
+          message:
+            "Translation module is configured but streamOptions.delimiters is not set. " +
+            "For proper sentence boundary detection during streaming with translation, " +
+            "consider setting delimiters (e.g., ['.', '!', '?', '\\n']).",
+          type: "other",
+        });
+      }
+    }
+
+    return warnings;
+  }
+
   protected createClient(
     config: LanguageModelStrategyConfig,
     settings: OrchestrationModelSettings,
@@ -371,10 +407,10 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
     client: OrchestrationClientInstance,
     request: OrchestrationRequest,
     abortSignal: AbortSignal | undefined,
+    settings: OrchestrationModelSettings,
   ): Promise<StreamCallResponse> {
-    const streamResponse = await client.stream(request, abortSignal, {
-      promptTemplating: { include_usage: true },
-    });
+    const sdkStreamOptions = this.buildSdkStreamOptions(settings.streamOptions);
+    const streamResponse = await client.stream(request, abortSignal, sdkStreamOptions);
 
     return {
       getFinishReason: () => streamResponse.getFinishReason(),
@@ -551,6 +587,37 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
     );
 
     return requestBody;
+  }
+
+  /**
+   * Builds SAP SDK stream options from user-facing stream options.
+   * @param streamOptions - User-provided stream options.
+   * @returns SDK-compatible stream options object.
+   * @internal
+   */
+  private buildSdkStreamOptions(streamOptions: OrchestrationModelSettings["streamOptions"]): {
+    global?: { chunk_size?: number; delimiters?: string[] };
+    outputFiltering?: { overlap: number };
+    promptTemplating: { include_usage: boolean };
+  } {
+    const delimiters = streamOptions?.delimiters;
+    const hasNonEmptyDelimiters = Array.isArray(delimiters) && delimiters.length > 0;
+    const hasGlobalOptions = streamOptions?.chunkSize !== undefined || hasNonEmptyDelimiters;
+
+    return {
+      promptTemplating: { include_usage: true },
+      ...(hasGlobalOptions && {
+        global: {
+          ...(streamOptions?.chunkSize !== undefined && { chunk_size: streamOptions.chunkSize }),
+          ...(hasNonEmptyDelimiters && {
+            delimiters: Array.from(delimiters),
+          }),
+        },
+      }),
+      ...(streamOptions?.outputFilteringOverlap !== undefined && {
+        outputFiltering: { overlap: streamOptions.outputFilteringOverlap },
+      }),
+    };
   }
 
   /**
