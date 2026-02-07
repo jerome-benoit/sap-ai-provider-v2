@@ -8,11 +8,11 @@ import { setGlobalLogLevel } from "@sap-cloud-sdk/util";
 import type { SAPAIEmbeddingModelId } from "./sap-ai-embedding-model.js";
 import type { SAPAIEmbeddingSettings } from "./sap-ai-settings.js";
 
-import { deepMerge } from "./deep-merge.js";
 import { SAPAIEmbeddingModelV2 } from "./sap-ai-embedding-model-v2.js";
 import { SAPAILanguageModelV2 } from "./sap-ai-language-model-v2.js";
 import { SAP_AI_PROVIDER_NAME, validateModelParamsSettings } from "./sap-ai-provider-options.js";
 import { SAPAIApiType, SAPAIModelId, SAPAISettings } from "./sap-ai-settings.js";
+import { mergeSettingsWithApi } from "./sap-ai-validation.js";
 
 /** @internal */
 export type DeploymentConfig = DeploymentIdConfig | ResourceGroupConfig;
@@ -141,19 +141,11 @@ export function createSAPAIProvider(options: SAPAIProviderSettings = {}): SAPAIP
   const providerApi = options.api ?? "orchestration";
 
   const createModel = (modelId: SAPAIModelId, settings: SAPAISettings = {}) => {
-    const mergedSettings: SAPAISettings = {
-      ...options.defaultSettings,
-      ...settings,
-      // Model-level api takes precedence over provider-level
-      api: settings.api ?? options.defaultSettings?.api ?? providerApi,
-      filtering: settings.filtering ?? options.defaultSettings?.filtering,
-      masking: settings.masking ?? options.defaultSettings?.masking,
-      modelParams: deepMerge(
-        options.defaultSettings?.modelParams ?? {},
-        settings.modelParams ?? {},
-      ),
-      tools: settings.tools ?? options.defaultSettings?.tools,
-    };
+    const mergedSettings = mergeSettingsWithApi<SAPAISettings>(
+      options.defaultSettings as Record<string, unknown> | undefined,
+      settings,
+      providerApi,
+    );
 
     return new SAPAILanguageModelV2(modelId, mergedSettings, {
       deploymentConfig,
@@ -167,11 +159,11 @@ export function createSAPAIProvider(options: SAPAIProviderSettings = {}): SAPAIP
     modelId: SAPAIEmbeddingModelId,
     settings: SAPAIEmbeddingSettings = {},
   ): SAPAIEmbeddingModelV2 => {
-    // Merge embedding settings with provider-level api
-    const mergedSettings: SAPAIEmbeddingSettings = {
-      ...settings,
-      api: settings.api ?? providerApi,
-    };
+    const mergedSettings = mergeSettingsWithApi<SAPAIEmbeddingSettings>(
+      options.defaultSettings as Record<string, unknown> | undefined,
+      settings,
+      providerApi,
+    );
 
     return new SAPAIEmbeddingModelV2(modelId, mergedSettings, {
       deploymentConfig,
