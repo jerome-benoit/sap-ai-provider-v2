@@ -54,6 +54,7 @@ consistently:
   - [`SAPAIProviderSettings`](#sapaiprovidersettings)
   - [`SAPAISettings`](#sapaisettings)
   - [`ModelParams`](#modelparams)
+  - [`OrchestrationStreamOptions`](#orchestrationstreamoptions)
   - [`SAPAIServiceKey`](#sapaiservicekey)
   - [`MaskingModuleConfig`](#maskingmoduleconfig)
   - [`DpiConfig`](#dpiconfig)
@@ -1031,19 +1032,21 @@ Model-specific configuration options.
 
 **Properties:**
 
-| Property                     | Type                     | Default | Description                                      |
-| ---------------------------- | ------------------------ | ------- | ------------------------------------------------ |
-| `modelVersion`               | `string`                 | -       | Specific model version                           |
-| `includeReasoning`           | `boolean`                | `false` | Include reasoning parts in SAP prompt conversion |
-| `escapeTemplatePlaceholders` | `boolean`                | `true`  | Escape template delimiters to prevent conflicts  |
-| `modelParams`                | `ModelParams`            | -       | Model generation parameters                      |
-| `masking`                    | `MaskingModule`          | -       | Data masking configuration (DPI)                 |
-| `filtering`                  | `FilteringModule`        | -       | Content filtering configuration                  |
-| `grounding`                  | `GroundingModule`        | -       | Document grounding configuration                 |
-| `placeholderValues`          | `Record<string, string>` | -       | Default values for template placeholders         |
-| `promptTemplateRef`          | `PromptTemplateRef`      | -       | Reference to a Prompt Registry template          |
-| `responseFormat`             | `ResponseFormatConfig`   | -       | Response format specification                    |
-| `tools`                      | `ChatCompletionTool[]`   | -       | Tool definitions in SAP AI SDK format            |
+| Property                     | Type                         | Default | Description                                              |
+| ---------------------------- | ---------------------------- | ------- | -------------------------------------------------------- |
+| `modelVersion`               | `string`                     | -       | Specific model version                                   |
+| `includeReasoning`           | `boolean`                    | `false` | Include reasoning parts in SAP prompt conversion         |
+| `escapeTemplatePlaceholders` | `boolean`                    | `true`  | Escape template delimiters to prevent conflicts          |
+| `modelParams`                | `ModelParams`                | -       | Model generation parameters                              |
+| `masking`                    | `MaskingModule`              | -       | Data masking configuration (DPI)                         |
+| `filtering`                  | `FilteringModule`            | -       | Content filtering configuration                          |
+| `grounding`                  | `GroundingModule`            | -       | Document grounding configuration                         |
+| `translation`                | `TranslationModule`          | -       | Translation configuration (Orchestration only)           |
+| `placeholderValues`          | `Record<string, string>`     | -       | Default values for template placeholders                 |
+| `promptTemplateRef`          | `PromptTemplateRef`          | -       | Reference to a Prompt Registry template                  |
+| `responseFormat`             | `ResponseFormatConfig`       | -       | Response format specification                            |
+| `streamOptions`              | `OrchestrationStreamOptions` | -       | Stream options for post-LLM modules (Orchestration only) |
+| `tools`                      | `ChatCompletionTool[]`       | -       | Tool definitions in SAP AI SDK format                    |
 
 **Example:**
 
@@ -1082,7 +1085,7 @@ For type-safe API-specific configuration, use the discriminated union types:
 
 - `OrchestrationModelSettings` - Settings with `api?: "orchestration"` and
   Orchestration-only options (`filtering`, `masking`, `grounding`, `translation`,
-  `tools`, `escapeTemplatePlaceholders`)
+  `tools`, `streamOptions`, `escapeTemplatePlaceholders`)
 - `FoundationModelsModelSettings` - Settings with `api: "foundation-models"` and
   Foundation Models-only options (`dataSources`)
 
@@ -1184,6 +1187,50 @@ console.log("Response:", result.text);
 > **Note:** Using these parameters with Orchestration API (`api: "orchestration"`)
 > will have no effect as they are passed through but ignored by the Orchestration
 > service.
+
+---
+
+### `OrchestrationStreamOptions`
+
+Stream options for controlling how post-LLM modules (translation, masking, filtering) process
+streaming responses. Only available with the Orchestration API.
+
+**Properties:**
+
+| Property                 | Type                | Description                                                            |
+| ------------------------ | ------------------- | ---------------------------------------------------------------------- |
+| `chunkSize`              | `number`            | Characters to buffer before post-LLM processing (range: 1-10000)       |
+| `delimiters`             | `readonly string[]` | Sentence delimiters for chunking (e.g., `[".", "!", "?"]`)             |
+| `outputFilteringOverlap` | `number`            | Characters from previous chunks for filtering context (range: 0-10000) |
+
+**Example:**
+
+```typescript
+import { createSAPAIProvider, buildTranslationConfig } from "@jerome-benoit/sap-ai-provider";
+import { streamText } from "ai";
+
+const provider = createSAPAIProvider();
+
+// Configure stream options at model level
+const model = provider("gpt-4.1", {
+  translation: {
+    output: buildTranslationConfig("output", { targetLanguage: "de" }),
+  },
+  streamOptions: {
+    chunkSize: 50,
+    delimiters: [".", "!", "?"],
+  },
+});
+
+const result = await streamText({
+  model,
+  prompt: "Explain AI in simple terms",
+});
+```
+
+> **Note:** When using translation with streaming, it is recommended to set
+> `delimiters` to ensure proper sentence boundary detection. The provider will
+> emit a warning if translation is configured without delimiters.
 
 ---
 
