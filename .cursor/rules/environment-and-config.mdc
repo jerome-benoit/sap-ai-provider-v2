@@ -18,7 +18,7 @@ handles authentication automatically:
 Configure the provider using `createSAPAIProvider(options)`:
 
 ```typescript
-import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
+import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider-v2";
 
 // Default configuration (auto-detects authentication)
 const provider = createSAPAIProvider();
