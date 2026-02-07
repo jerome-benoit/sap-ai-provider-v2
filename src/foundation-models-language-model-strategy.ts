@@ -74,13 +74,11 @@ export class FoundationModelsLanguageModelStrategy extends BaseLanguageModelStra
   } {
     const warnings: SharedV3Warning[] = [];
 
-    // Tools conversion (FM doesn't support settings.tools)
     const toolsResult = convertToolsToSAPFormat<AzureOpenAiChatCompletionTool>(
       options.tools as AISDKTool[] | undefined,
     );
     warnings.push(...toolsResult.warnings);
 
-    // Response format conversion
     const { responseFormat, warning: responseFormatWarning } = convertResponseFormat(
       options.responseFormat,
       settings.responseFormat,
@@ -111,7 +109,6 @@ export class FoundationModelsLanguageModelStrategy extends BaseLanguageModelStra
   protected createClient(
     config: LanguageModelStrategyConfig,
     settings: FoundationModelsModelSettings,
-    // Foundation Models doesn't use commonParts for client creation - required by base class
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _commonParts: CommonBuildResult<ChatMessage[], SAPToolChoice | undefined>,
   ): FoundationModelsClient {

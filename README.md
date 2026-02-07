@@ -67,7 +67,7 @@ SAP's enterprise-grade AI models through the familiar Vercel AI SDK interface.
 - 🔒 **Data Masking** - Built-in SAP DPI integration for privacy
 - 🛡️ **Content Filtering** - Azure Content Safety and Llama Guard support
 - 🔧 **TypeScript Support** - Full type safety and IntelliSense
-- 🎨 **Multiple Models** - Support for GPT-4, Claude, Gemini, Nova, and more
+- 🎨 **Multiple Models** - Support for OpenAI, Claude, Gemini, Nova, and more
 - ⚡ **Language Model V2** - Compatible with Vercel AI SDK 5.x
 - 📊 **Text Embeddings** - Generate vector embeddings for RAG and semantic
   search
@@ -92,9 +92,9 @@ import { APICallError } from "@ai-sdk/provider";
 const provider = createSAPAIProvider();
 
 try {
-  // Generate text with gpt-4o
+  // Generate text with gpt-4.1
   const result = await generateText({
-    model: provider("gpt-4o"),
+    model: provider("gpt-4.1"),
     prompt: "Explain quantum computing in simple terms.",
   });
 
@@ -119,121 +119,14 @@ try {
 | **Install**         | `npm install @jerome-benoit/sap-ai-provider-v2 ai`                        | [Installation](#installation)                                 |
 | **Auth Setup**      | Add `AICORE_SERVICE_KEY` to `.env`                                        | [Environment Setup](./ENVIRONMENT_SETUP.md)                   |
 | **Create Provider** | `createSAPAIProvider()` or use `sapai`                                    | [Provider Creation](#provider-creation)                       |
-| **Text Generation** | `generateText({ model: provider("gpt-4o"), prompt })`                     | [Basic Usage](#text-generation)                               |
-| **Streaming**       | `streamText({ model: provider("gpt-4o"), prompt })`                       | [Streaming](#streaming-responses)                             |
+| **Text Generation** | `generateText({ model: provider("gpt-4.1"), prompt })`                    | [Basic Usage](#text-generation)                               |
+| **Streaming**       | `streamText({ model: provider("gpt-4.1"), prompt })`                      | [Streaming](#streaming-responses)                             |
 | **Tool Calling**    | `generateText({ tools: { myTool: tool({...}) } })`                        | [Tool Calling](#tool-calling)                                 |
 | **Error Handling**  | `catch (error instanceof APICallError)`                                   | [API Reference](./API_REFERENCE.md#error-handling--reference) |
 | **Choose Model**    | See 80+ models (GPT, Claude, Gemini, Llama)                               | [Models](./API_REFERENCE.md#models)                           |
-| **Embeddings**      | `embed({ model: provider.textEmbeddingModel("text-embedding-ada-002") })` | [Embeddings](#embeddings)                                     |
+| **Embeddings**      | `embed({ model: provider.textEmbeddingModel("text-embedding-3-small") })` | [Embeddings](#embeddings)                                     |
 
-## Installation
-
-**Requirements:** Node.js 18+ and Vercel AI SDK 5.0+ or 6.0+
-
-```bash
-npm install @jerome-benoit/sap-ai-provider-v2 ai
-```
-
-Or with other package managers:
-
-```bash
-# Yarn
-yarn add @jerome-benoit/sap-ai-provider-v2 ai
-
-# pnpm
-pnpm add @jerome-benoit/sap-ai-provider-v2 ai
-```
-
-## Provider Creation
-
-You can create an SAP AI provider in two ways:
-
-### Option 1: Factory Function (Recommended for Custom Configuration)
-
-```typescript
-import "dotenv/config"; // Load environment variables
-import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider-v2";
-
-const provider = createSAPAIProvider({
-  resourceGroup: "production",
-  deploymentId: "your-deployment-id", // Optional
-});
-```
-
-### API Selection
-
-The provider supports two SAP AI Core APIs:
-
-- **Orchestration API** (default): Full-featured API with data masking, content
-  filtering, document grounding, and translation
-- **Foundation Models API**: Direct model access with additional parameters like
-  `logprobs`, `seed`, `logit_bias`, and `dataSources` (Azure On Your Data)
-
-**Complete example:**
-[examples/example-foundation-models.ts](./examples/example-foundation-models.ts)\
-**Complete documentation:**
-[API Reference - Foundation Models API](./API_REFERENCE.md#api-comparison-orchestration-vs-foundation-models)
-
-```typescript
-import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai-provider-v2";
-
-// Provider-level API selection
-const provider = createSAPAIProvider({
-  api: "foundation-models", // All models use Foundation Models API
-});
-
-// Model-level API override
-const model = provider("gpt-4o", {
-  api: "orchestration", // Override for this model only
-});
-
-// Per-call API override via providerOptions
-const result = await generateText({
-  model: provider("gpt-4o"),
-  prompt: "Hello",
-  providerOptions: {
-    [SAP_AI_PROVIDER_NAME]: {
-      api: "foundation-models", // Override for this call only
-    },
-  },
-});
-```
-
-**Run it:** `npx tsx examples/example-foundation-models.ts`
-
-> **Note:** The Foundation Models API does not support orchestration features
-> (masking, filtering, grounding, translation). Attempting to use these features
-> with Foundation Models API will throw an `UnsupportedFeatureError`.
-
-### Option 2: Default Instance (Quick Start)
-
-```typescript
-import "dotenv/config"; // Load environment variables
-import { sapai } from "@jerome-benoit/sap-ai-provider-v2";
-import { generateText } from "ai";
-
-// Use directly with auto-detected configuration
-const result = await generateText({
-  model: sapai("gpt-4o"),
-  prompt: "Hello!",
-});
-```
-
-The `sapai` export provides a convenient default provider instance with
-automatic configuration from environment variables or service bindings.
-
-### Provider Methods
-
-The provider is callable and also exposes explicit methods:
-
-```typescript
-// Callable syntax (creates language model)
-const chatModel = provider("gpt-4o");
-
-// Explicit method syntax
-const chatModel = provider.chat("gpt-4o");
-const embeddingModel = provider.textEmbeddingModel("text-embedding-ada-002");
-```
+````
 
 All methods accept an optional second parameter for model-specific settings.
 
@@ -254,11 +147,11 @@ instructions, SAP BTP deployment, and troubleshooting.
 
 ```typescript
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "Write a short story about a robot learning to paint.",
 });
 console.log(result.text);
-```
+````
 
 **Run it:** `npx tsx examples/example-generate-text.ts`
 
@@ -273,7 +166,7 @@ console.log(result.text);
 
 ```typescript
 const result = await generateText({
-  model: provider("anthropic--claude-3.5-sonnet"),
+  model: provider("anthropic--claude-4.5-sonnet"),
   messages: [
     { role: "system", content: "You are a helpful coding assistant." },
     {
@@ -297,7 +190,7 @@ import { APICallError } from "@ai-sdk/provider";
 
 try {
   const result = streamText({
-    model: provider("gpt-4o"),
+    model: provider("gpt-4.1"),
     prompt: "Explain machine learning concepts.",
   });
 
@@ -332,7 +225,7 @@ import { generateText } from "ai";
 
 const provider = createSAPAIProvider();
 
-const model = provider("gpt-4o", {
+const model = provider("gpt-4.1", {
   // Optional: include assistant reasoning parts (chain-of-thought).
   // Best practice is to keep this disabled.
   includeReasoning: false,
@@ -366,7 +259,7 @@ const provider = createSAPAIProvider();
 
 // Single embedding
 const { embedding } = await embed({
-  model: provider.textEmbeddingModel("text-embedding-ada-002"),
+  model: provider.textEmbeddingModel("text-embedding-3-small"),
   value: "What is machine learning?",
 });
 
@@ -379,43 +272,24 @@ const { embeddings } = await embedMany({
 
 **Run it:** `npx tsx examples/example-embeddings.ts`
 
-**Common embedding models:**
-
-- `text-embedding-ada-002` - OpenAI Ada v2 (cost-effective)
-- `text-embedding-3-small` - OpenAI v3 small (balanced)
-- `text-embedding-3-large` - OpenAI v3 large (highest quality)
-
-> **Note:** Model availability depends on your SAP AI Core tenant configuration.
+> **Note:** Embedding model availability depends on your SAP AI Core tenant
+> configuration. Common providers include OpenAI, Amazon Titan, and NVIDIA.
 
 For complete embedding API documentation, see
 **[API Reference: Embeddings](./API_REFERENCE.md#embeddings)**.
 
 ## Supported Models
 
-This provider supports all models available through SAP AI Core, including:
-
-**Popular models:**
-
-- **OpenAI**: gpt-4o, gpt-4o-mini, gpt-4.1, o1, o3, o4-mini (recommended for
-  multi-tool apps)
-- **Anthropic Claude**: anthropic--claude-3.5-sonnet, anthropic--claude-4-opus
-- **Google Gemini**: gemini-2.5-pro, gemini-2.0-flash
-
-- **Amazon Nova**: amazon--nova-pro, amazon--nova-lite
-- **Open Source**: mistralai--mistral-large-instruct,
-  meta--llama3.1-70b-instruct
+This provider supports all models available through SAP AI Core, including models
+from **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Amazon Nova**,
+**Mistral AI**, **Cohere**, and **SAP** (ABAP, RPT).
 
 > **Note:** Model availability depends on your SAP AI Core tenant configuration,
-> region, and subscription.
+> region, and subscription. Use `provider("model-name")` with any model ID
+> available in your environment.
 
-**To discover available models in your environment:**
-
-```bash
-curl "https://<AI_API_URL>/v2/lm/deployments" -H "Authorization: Bearer $TOKEN"
-```
-
-For complete model details, capabilities comparison, and limitations, see
-**[API Reference: SAPAIModelId](./API_REFERENCE.md#sapaimodelid)**.
+For details on discovering available models, see
+**[API Reference: Supported Models](./API_REFERENCE.md#supported-models)**.
 
 ## Advanced Features
 
@@ -449,7 +323,7 @@ const weatherTool = tool({
 });
 
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "What's the weather in Tokyo?",
   tools: { getWeather: weatherTool },
   maxSteps: 3,
@@ -469,7 +343,7 @@ for the complete comparison table.
 
 ```typescript
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   messages: [
     {
       role: "user",
@@ -557,7 +431,7 @@ const provider = createSAPAIProvider({
 });
 
 // Queries are now grounded in your documents
-const model = provider("gpt-4o");
+const model = provider("gpt-4.1");
 ```
 
 **Run it:** `npx tsx examples/example-document-grounding.ts`
@@ -589,7 +463,7 @@ const provider = createSAPAIProvider({
 });
 
 // Model handles German input/output automatically
-const model = provider("gpt-4o");
+const model = provider("gpt-4.1");
 ```
 
 **Run it:** `npx tsx examples/example-translation.ts`
@@ -606,7 +480,7 @@ import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai
 const provider = createSAPAIProvider();
 
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "Explain quantum computing",
   providerOptions: {
     [SAP_AI_PROVIDER_NAME]: {

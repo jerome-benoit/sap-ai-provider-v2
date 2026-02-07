@@ -34,8 +34,8 @@ The `ProviderV2` interface exposes:
 
 ## Key Points
 
-- Create language models via: `const model = provider(\"gpt-4o\")`.
-- Create embedding models via: `const model = provider.textEmbeddingModel(\"text-embedding-ada-002\")`.
+- Create language models via: `const model = provider("gpt-4.1")`.
+- Create embedding models via: `const model = provider.textEmbeddingModel("text-embedding-3-small")`.
 - Supported operations include `doGenerate` and `doStream` for language models,
   `doEmbed` for embedding models.
 - V2 source files:
