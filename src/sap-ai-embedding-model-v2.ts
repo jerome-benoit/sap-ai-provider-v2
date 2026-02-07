@@ -45,7 +45,7 @@ interface SAPAIEmbeddingModelV2Config {
  * import { embed, embedMany } from "ai";
  *
  * const provider = createSAPAIProvider();
- * const embeddingModel = provider.textEmbeddingModel("text-embedding-ada-002");
+ * const embeddingModel = provider.textEmbeddingModel("text-embedding-3-small");
  *
  * // Single embedding
  * const { embedding } = await embed({

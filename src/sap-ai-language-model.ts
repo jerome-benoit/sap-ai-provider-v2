@@ -50,7 +50,7 @@ interface SAPAILanguageModelConfig {
  * {@link createSAPAIProvider} factory function:
  * @example
  * ```typescript
- * import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
+ * import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider-v2";
  * import { generateText, streamText } from "ai";
  *
  * const provider = createSAPAIProvider();

@@ -61,7 +61,7 @@ interface SAPAIEmbeddingModelConfig {
  * {@link createSAPAIProvider} factory function:
  * @example
  * ```typescript
- * import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider";
+ * import { createSAPAIProvider } from "@jerome-benoit/sap-ai-provider-v2";
  * import { embed, embedMany } from "ai";
  *
  * const provider = createSAPAIProvider();

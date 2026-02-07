@@ -1653,7 +1653,7 @@ configuration.
 **Usage Examples:**
 
 ```typescript
-import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai-provider";
+import { createSAPAIProvider, SAP_AI_PROVIDER_NAME } from "@jerome-benoit/sap-ai-provider-v2";
 import { generateText } from "ai";
 
 const provider = createSAPAIProvider();

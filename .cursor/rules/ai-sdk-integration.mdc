@@ -68,13 +68,13 @@ const provider = createSAPAIProvider();
 
 // Language model (V2)
 const result = await generateText({
-  model: provider("gpt-4o"),
+  model: provider("gpt-4.1"),
   prompt: "Hello!",
 });
 
 // Embedding model (V2 - use textEmbeddingModel, NOT embedding)
 const { embedding } = await embed({
-  model: provider.textEmbeddingModel("text-embedding-ada-002"),
+  model: provider.textEmbeddingModel("text-embedding-3-small"),
   value: "Some text to embed",
 });
 ```
