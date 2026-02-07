@@ -55,7 +55,7 @@ interface SAPAILanguageModelV2Config {
  * import { generateText, streamText } from "ai";
  *
  * const provider = createSAPAIProvider();
- * const model = provider("gpt-4o");
+ * const model = provider("gpt-4.1");
  *
  * // Non-streaming
  * const { text } = await generateText({

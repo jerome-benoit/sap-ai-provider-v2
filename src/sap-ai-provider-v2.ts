@@ -96,7 +96,7 @@ export interface SAPAIProviderV2 extends ProviderV2 {
  * @example
  * // Basic usage with defaults
  * const provider = createSAPAIProvider();
- * const model = provider('gpt-4o');
+ * const model = provider('gpt-4.1');
  * @example
  * // With custom configuration
  * const provider = createSAPAIProvider({
@@ -106,7 +106,7 @@ export interface SAPAIProviderV2 extends ProviderV2 {
  * });
  * @example
  * // Using provider methods
- * const chatModel = provider.chat('gpt-4o');
+ * const chatModel = provider.chat('gpt-4.1');
  * const embeddingModel = provider.textEmbeddingModel('text-embedding-ada-002');
  * @see {@link SAPAIProviderSettings} for all configuration options.
  * @see {@link SAPAIProviderV2} for the provider interface.
