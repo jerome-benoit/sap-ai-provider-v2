@@ -125,6 +125,25 @@ function isTemplateRefById(ref: PromptTemplateRef): ref is PromptTemplateRefByID
 }
 
 /**
+ * Merges and resolves placeholder values from settings and provider options.
+ * @param settings - Model settings containing placeholderValues.
+ * @param sapOptions - Provider options containing placeholderValues.
+ * @returns Merged placeholder values or undefined if empty.
+ * @internal
+ */
+function resolvePlaceholderValues(
+  settings: OrchestrationModelSettings,
+  sapOptions: Record<string, unknown> | undefined,
+): Record<string, string> | undefined {
+  const merged = deepMerge(
+    settings.placeholderValues as Record<string, unknown> | undefined,
+    sapOptions?.placeholderValues as Record<string, unknown> | undefined,
+  ) as Record<string, string>;
+
+  return hasKeys(merged) ? merged : undefined;
+}
+
+/**
  * Module keys for orchestration configuration.
  * @internal
  */
@@ -407,14 +426,7 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
       ...this.collectConfigRefIgnoredWarnings(settings, options, commonParts.sapOptions),
     );
 
-    const mergedPlaceholderValues = deepMerge(
-      settings.placeholderValues as Record<string, unknown> | undefined,
-      commonParts.sapOptions?.placeholderValues as Record<string, unknown> | undefined,
-    ) as Record<string, string>;
-
-    const placeholderValues = hasKeys(mergedPlaceholderValues)
-      ? mergedPlaceholderValues
-      : undefined;
+    const placeholderValues = resolvePlaceholderValues(settings, commonParts.sapOptions);
 
     // In configRef mode, SDK uses messagesHistory (not messages)
     const request: OrchestrationRequest = {
@@ -582,14 +594,7 @@ export class OrchestrationLanguageModelStrategy extends BaseLanguageModelStrateg
       tools,
     });
 
-    const mergedPlaceholderValues = deepMerge(
-      settings.placeholderValues as Record<string, unknown> | undefined,
-      commonParts.sapOptions?.placeholderValues as Record<string, unknown> | undefined,
-    ) as Record<string, string>;
-
-    const placeholderValues = hasKeys(mergedPlaceholderValues)
-      ? mergedPlaceholderValues
-      : undefined;
+    const placeholderValues = resolvePlaceholderValues(settings, commonParts.sapOptions);
 
     const request = this.buildRequestBody(
       commonParts.messages,
